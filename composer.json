@@ -1,0 +1,60 @@
+{
+    "name": "esign/laravel-shopify",
+    "description": "A modern Laravel package for Shopify app development",
+    "keywords": ["laravel", "shopify", "shopify-app", "oauth", "graphql", "webhooks"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Esign",
+            "email": "info@esign.eu"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/database": "^11.0|^12.0",
+        "illuminate/http": "^11.0|^12.0",
+        "illuminate/contracts": "^11.0|^12.0",
+        "shopify/shopify-app-php": "^0.1"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "phpunit/phpunit": "^11.0",
+        "laravel/pint": "^1.13",
+        "mockery/mockery": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Esign\\LaravelShopify\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Esign\\LaravelShopify\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Esign\\LaravelShopify\\ShopifyServiceProvider"
+            ],
+            "aliases": {
+                "Shopify": "Esign\\LaravelShopify\\Facades\\Shopify"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "format": "vendor/bin/pint"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}

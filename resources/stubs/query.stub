@@ -1,0 +1,71 @@
+<?php
+
+namespace {{ namespace }};
+
+use Esign\LaravelShopify\GraphQL\Contracts\Query;
+
+class {{ class }} implements Query
+{
+    /**
+     * Create a new query instance.
+     */
+    public function __construct(
+        // TODO: Add constructor parameters for your query variables
+        // Example: private string $id
+    ) {}
+
+    /**
+     * Get the GraphQL query string.
+     */
+    public function getQuery(): string
+    {
+        return <<<'GQL'
+            query {{ queryName }}($id: ID!) {
+                # TODO: Replace with your actual GraphQL query
+                # Example:
+                # product(id: $id) {
+                #     id
+                #     title
+                #     description
+                #     status
+                #     createdAt
+                #     variants(first: 10) {
+                #         edges {
+                #             node {
+                #                 id
+                #                 title
+                #                 price
+                #                 sku
+                #             }
+                #         }
+                #     }
+                # }
+            }
+        GQL;
+    }
+
+    /**
+     * Get the query variables.
+     */
+    public function getVariables(): array
+    {
+        return [
+            // TODO: Return your query variables
+            // Example: 'id' => $this->id,
+        ];
+    }
+
+    /**
+     * Map the GraphQL response to your desired format.
+     * 
+     * @param \Shopify\App\Types\GQLResult $response The GraphQL result object
+     * @return mixed The mapped data
+     */
+    public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+    {
+        // TODO: Extract and return the data you need from the response
+        // Example: return $response->data['product'];
+        
+        return $response->data;
+    }
+}

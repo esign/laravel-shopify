@@ -1,0 +1,26 @@
+{
+  "private": true,
+  "name": "@esign/laravel-shopify",
+  "version": "1.0.0",
+  "description": "Modern Laravel package for building Shopify apps",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@shopify/app-bridge": "^4.0.0",
+    "@shopify/app-bridge-react": "^4.0.0",
+    "@shopify/polaris": "^13.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

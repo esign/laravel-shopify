@@ -1,0 +1,99 @@
+<?php
+
+namespace {{ namespace }};
+
+use Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery;
+
+class {{ class }} implements PaginatedQuery
+{
+    /**
+     * Create a new paginated query instance.
+     */
+    public function __construct(
+        // TODO: Add constructor parameters for your query filters
+        // Example: private ?string $query = null
+    ) {}
+
+    /**
+     * Get the GraphQL query string.
+     * 
+     * IMPORTANT: Your query must include a $cursor variable and use it
+     * in the "after" parameter for pagination to work correctly.
+     */
+    public function getQuery(): string
+    {
+        return <<<'GQL'
+            query {{ queryName }}($cursor: String) {
+                # TODO: Replace with your actual paginated GraphQL query
+                # The query MUST include:
+                # 1. $cursor variable in the query signature
+                # 2. after: $cursor in the connection arguments
+                # 3. pageInfo with hasNextPage and endCursor
+                #
+                # Example:
+                # products(first: 50, after: $cursor) {
+                #     edges {
+                #         node {
+                #             id
+                #             title
+                #             status
+                #             createdAt
+                #         }
+                #         cursor
+                #     }
+                #     pageInfo {
+                #         hasNextPage
+                #         endCursor
+                #     }
+                # }
+            }
+        GQL;
+    }
+
+    /**
+     * Get the query variables.
+     */
+    public function getVariables(): array
+    {
+        return [
+            // TODO: Add any filter variables (do NOT include cursor, it's handled automatically)
+            // Example: 'query' => $this->query,
+        ];
+    }
+
+    /**
+     * Map the GraphQL response to your desired format.
+     * 
+     * @param \Shopify\App\Types\GQLResult $response The GraphQL result object
+     * @return array Array of items from this page
+     */
+    public function mapFromResponse(\Shopify\App\Types\GQLResult $response): array
+    {
+        // TODO: Extract and return the edges from the response
+        // Example: return $response->data['products']['edges'];
+        
+        return $response->data;
+    }
+
+    /**
+     * Check if there are more pages to fetch.
+     */
+    public function hasNextPage(\Shopify\App\Types\GQLResult $response): bool
+    {
+        // TODO: Extract the hasNextPage value from pageInfo
+        // Example: return $response->data['products']['pageInfo']['hasNextPage'];
+        
+        return false;
+    }
+
+    /**
+     * Get the cursor for the next page.
+     */
+    public function getNextCursor(\Shopify\App\Types\GQLResult $response): ?string
+    {
+        // TODO: Extract the endCursor value from pageInfo
+        // Example: return $response->data['products']['pageInfo']['endCursor'];
+        
+        return null;
+    }
+}
