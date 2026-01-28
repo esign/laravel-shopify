@@ -410,7 +410,23 @@ The built-in GDPR and app lifecycle webhooks are already configured in `config/s
 
 #### 3. Add Custom Webhook Handlers
 
-For additional webhooks (orders, products, etc.), add them to `config/shopify.php`:
+##### Generate Webhook Job (Recommended)
+
+Use the Artisan command to quickly scaffold a new webhook job:
+
+```bash
+php artisan shopify:make-webhook OrdersCreateJob --topic=orders/create
+```
+
+This creates `app/Jobs/Shopify/OrdersCreateJob.php` with boilerplate code following best practices.
+
+**Important:** After generating the job, you must:
+1. Register the webhook in your `shopify.app.toml` file
+2. Add the job mapping to `config/shopify.php`
+
+##### Register Webhook in Config
+
+Add your custom webhook handlers to `config/shopify.php`:
 
 ```php
 'webhooks' => [
@@ -434,7 +450,7 @@ For additional webhooks (orders, products, etc.), add them to `config/shopify.ph
 ],
 ```
 
-#### 4. Create Custom Webhook Job
+#### 4. Create Custom Webhook Job (Manual)
 
 ```php
 <?php

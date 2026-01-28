@@ -68,6 +68,13 @@ class ShopifyServiceProvider extends ServiceProvider
 
         // Register exception handling
         $this->registerExceptionHandling();
+
+        // Register Artisan commands
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                Console\MakeWebhookCommand::class,
+            ]);
+        }
     }
 
     /**
