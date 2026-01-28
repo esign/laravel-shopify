@@ -2,7 +2,6 @@
 
 namespace Esign\LaravelShopify;
 
-use Esign\LaravelShopify\Console\Commands\CleanupUninstalledShopsCommand;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationExceptionHandler;
 use Esign\LaravelShopify\Exceptions\TokenRefreshRequiredException;
@@ -63,13 +62,6 @@ class ShopifyServiceProvider extends ServiceProvider
         // Load routes
         $this->loadRoutesFrom(__DIR__.'/../routes/shopify.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/webhooks.php');
-
-        // Register commands
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                CleanupUninstalledShopsCommand::class,
-            ]);
-        }
 
         // Register middleware
         $this->registerMiddleware();
