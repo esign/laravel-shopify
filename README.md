@@ -8,18 +8,14 @@ A modern Laravel package for building **embedded Shopify apps** using **session 
 - **Shopify Managed Installation** - Scopes managed entirely by Shopify CLI via `shopify.app.toml`
 - **Shop Model** - Encrypted tokens, soft deletes, reinstallation support
 - **GraphQL Client** - Type-safe queries/mutations with automatic error handling and logging
-- **Webhook System** - HMAC verification, job dispatch with queue routing
-- **Frontend Scaffolding** - Minimal React + App Bridge + Polaris starter (fully customizable)
+- **Webhook System** - HMAC verification, job dispatch with queue routing, built-in GDPR handlers
 - **8 Middleware Types** - Embedded app, webhooks, App Proxy, UI extensions, Flow actions
-- **Custom App Support** - Admin API token management for custom apps
 - **Multi-Shop Ready** - Single database, per-shop authentication
-- **GDPR Compliant** - Data retention policies and cleanup commands
 
 ## Requirements
 
-- PHP 8.2+
-- Laravel 12+
-- Node.js 18+ (for frontend)
+- PHP 8.1+
+- Laravel 11+ or 12+
 - Shopify CLI 3.x+ (for deployment)
 
 ## Installation
@@ -40,7 +36,7 @@ php artisan migrate
 This publishes:
 - `config/shopify.php` - Main configuration
 - `database/migrations/` - Shops table
-- `resources/views/shopify/` - Blade templates
+- `resources/views/vendor/shopify/` - Blade templates (app.blade.php, auth-error.blade.php, token-refresh.blade.php)
 
 ### 3. Configure Environment
 
@@ -52,37 +48,7 @@ SHOPIFY_API_SECRET=your_api_secret_from_shopify_partner_dashboard
 SHOPIFY_API_VERSION=2025-01
 ```
 
-**Important:** Do NOT set `SHOPIFY_SCOPES` in your `.env` file. Scopes and webhooks are managed by Shopify CLI via your `shopify.app.toml` file.
-
-### 4. Install Frontend Dependencies
-
-The package includes a complete React + Shopify Polaris frontend setup for embedded apps:
-
-```bash
-npm install
-npm run dev
-```
-
-**What's included:**
-- React 18 with Vite for fast development
-- Shopify App Bridge for embedded app integration
-- Polaris components for consistent UI
-- Minimal starter homepage (ready to customize)
-
-**Selective publishing:**
-```bash
-# Publish only frontend assets
-php artisan vendor:publish --tag=shopify-frontend
-
-# Publish only views
-php artisan vendor:publish --tag=shopify-views
-
-# Publish only build configuration
-php artisan vendor:publish --tag=shopify-build-config
-
-# Publish everything
-php artisan vendor:publish --provider="Esign\LaravelShopify\ShopifyServiceProvider"
-```
+**Important:** Do NOT set `SHOPIFY_SCOPES` in your `.env` file. Scopes are managed by Shopify CLI via your `shopify.app.toml` file.
 
 ## How It Works
 
@@ -410,15 +376,15 @@ The built-in GDPR and app lifecycle webhooks are already configured in `config/s
 
 #### 3. Add Custom Webhook Handlers
 
-##### Generate Webhook Job (Recommended)
+##### Generate Webhook Job
 
-Use the Artisan command to quickly scaffold a new webhook job:
+Use the Artisan command to scaffold a new webhook job:
 
 ```bash
 php artisan shopify:make-webhook OrdersCreateJob --topic=orders/create
 ```
 
-This creates `app/Jobs/Shopify/OrdersCreateJob.php` with boilerplate code following best practices.
+This creates `app/Jobs/Shopify/OrdersCreateJob.php` with boilerplate code.
 
 **Important:** After generating the job, you must:
 1. Register the webhook in your `shopify.app.toml` file
@@ -486,26 +452,6 @@ class OrdersCreateJob implements ShouldQueue
 }
 ```
 
-### GDPR Compliance
-
-Schedule cleanup of uninstalled shops:
-
-```php
-// In app/Console/Kernel.php
-protected function schedule(Schedule $schedule)
-{
-    // Delete shops soft-deleted 90+ days ago
-    $schedule->command('shopify:cleanup-uninstalled-shops --days=90 --force')
-        ->daily();
-}
-```
-
-Or run manually:
-
-```bash
-php artisan shopify:cleanup-uninstalled-shops --days=90
-```
-
 ## Middleware
 
 The package includes 8 middleware types for different Shopify surfaces:
@@ -543,141 +489,6 @@ All middleware automatically:
 7. **Queue Routing**: Webhooks route to specific queues (e.g., GDPR on separate queue)
 
 ## Advanced Usage
-
-### Frontend Customization
-
-The package provides a minimal React frontend that you can customize for your app's needs.
-
-#### Customizing the Homepage
-
-The `App.jsx` component is intentionally minimal. Replace it with your own UI:
-
-```jsx
-import React from 'react';
-import { AppProvider, Page, Layout, Card } from '@shopify/polaris';
-import '@shopify/polaris/build/esm/styles.css';
-import AppBridgeProvider from './AppBridgeProvider';
-
-export default function App() {
-    return (
-        <AppBridgeProvider>
-            <AppProvider i18n={{}}>
-                <Page title="My Custom App">
-                    <Layout>
-                        <Layout.Section>
-                            <Card>
-                                {/* Your custom content here */}
-                            </Card>
-                        </Layout.Section>
-                    </Layout>
-                </Page>
-            </AppProvider>
-        </AppBridgeProvider>
-    );
-}
-```
-
-#### Creating Additional Pages
-
-Add new components and use your preferred routing solution:
-
-```bash
-# Using React Router
-npm install react-router-dom
-
-# Or TanStack Router, Wouter, etc.
-```
-
-```jsx
-// resources/js/components/App.jsx
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import SettingsPage from './pages/SettingsPage';
-
-export default function App() {
-    return (
-        <AppBridgeProvider>
-            <AppProvider i18n={{}}>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                    </Routes>
-                </BrowserRouter>
-            </AppProvider>
-        </AppBridgeProvider>
-    );
-}
-```
-
-#### Making API Calls
-
-Use Laravel routes to fetch data from your backend:
-
-```jsx
-// resources/js/components/ProductList.jsx
-import { useState, useEffect } from 'react';
-import { Card, DataTable } from '@shopify/polaris';
-
-export default function ProductList() {
-    const [products, setProducts] = useState([]);
-    
-    useEffect(() => {
-        fetch('/api/products')
-            .then(res => res.json())
-            .then(data => setProducts(data));
-    }, []);
-    
-    return (
-        <Card>
-            <DataTable
-                columnContentTypes={['text', 'text', 'numeric']}
-                headings={['Title', 'SKU', 'Price']}
-                rows={products.map(p => [p.title, p.sku, p.price])}
-            />
-        </Card>
-    );
-}
-```
-
-```php
-// routes/web.php or routes/api.php
-Route::middleware('shopify.verify.embedded-app')->get('/api/products', function () {
-    $products = Shopify::query(new GetAllProductsQuery());
-    return response()->json($products);
-});
-```
-
-#### Build Configuration
-
-The included `vite.config.js` is production-ready but can be customized:
-
-```js
-// vite.config.js
-export default defineConfig({
-    plugins: [react()],
-    build: {
-        outDir: 'public/build',
-        manifest: true,
-        rollupOptions: {
-            input: {
-                app: 'resources/js/app.jsx',
-                // Add additional entry points
-                settings: 'resources/js/settings.jsx',
-            },
-        },
-    },
-});
-```
-
-#### Template Development
-
-If you're building templates using this package:
-
-1. **Keep the infrastructure**: Don't publish `AppBridgeProvider.jsx`, `app.jsx`, or `vite.config.js`
-2. **Customize the homepage**: Replace `App.jsx` with your template's UI
-3. **Add template-specific components**: Create new components in your template
-4. **Update package.json**: Add any additional dependencies your template needs
 
 ### Shop Model
 
@@ -737,5 +548,5 @@ This package is open-sourced software licensed under the [MIT license](LICENSE.m
 
 ## Credits
 
-- Built by [Esign](https://esign.eu)
+- Built by [Dynamate](https://dynamate.be)
 - Powered by [`shopify/shopify-app-php`](https://github.com/Shopify/shopify-app-php)
