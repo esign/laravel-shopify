@@ -1,6 +1,7 @@
 /vendor
 /node_modules
 /coverage
+/public
 .env
 .phpunit.result.cache
 /.phpunit.cache

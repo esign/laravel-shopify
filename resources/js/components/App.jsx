@@ -1,39 +1,28 @@
-import React from 'react';
-import { AppProvider, Page, Card, Text, BlockStack } from '@shopify/polaris';
-import '@shopify/polaris/build/esm/styles.css';
-import AppBridgeProvider from './AppBridgeProvider';
+import { createApp } from '@shopify/app-bridge';
+import { useEffect } from 'preact/hooks';
 
 /**
  * Main App Component
  * 
  * This is a minimal starter component that demonstrates the basic setup
- * for a Shopify embedded app using Polaris and App Bridge.
+ * for a Shopify embedded app using Preact and Polaris web components.
  * 
- * Customize this component to build your app's homepage.
  */
 export default function App() {
     return (
-        <AppBridgeProvider>
-            <AppProvider i18n={{}}>
-                <Page title="Your Shopify App">
-                    <BlockStack gap="400">
-                        <Card>
-                            <BlockStack gap="200">
-                                <Text variant="headingMd" as="h2">
-                                    Welcome to Your Shopify App
-                                </Text>
-                                <Text as="p">
-                                    This is your embedded app home page. Customize this component 
-                                    in <strong>resources/js/components/App.jsx</strong> to build your app's interface.
-                                </Text>
-                                <Text as="p" tone="subdued">
-                                    Connected to shop: {window.shopifyConfig.shop || 'Not available'}
-                                </Text>
-                            </BlockStack>
-                        </Card>
-                    </BlockStack>
-                </Page>
-            </AppProvider>
-        </AppBridgeProvider>
+        <s-page heading="Your Shopify App">
+            <s-section>
+                <s-stack gap="base">
+                    <s-heading level="2">Welcome to Your Shopify App</s-heading>
+                    <s-paragraph>
+                        This is your embedded app home page built with Preact and Shopify Polaris web components.
+                        Customize this component in <strong>resources/js/components/App.jsx</strong> to build your app's interface.
+                    </s-paragraph>
+                    <s-paragraph tone="subdued">
+                        Connected to shop: {window.shopifyConfig.shop || 'Not available'}
+                    </s-paragraph>
+                </s-stack>
+            </s-section>
+        </s-page>
     );
 }
