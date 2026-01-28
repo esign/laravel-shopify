@@ -57,17 +57,6 @@ class ShopifyServiceProvider extends ServiceProvider
             __DIR__.'/../resources/views' => resource_path('views/vendor/shopify'),
         ], 'shopify-views');
 
-        // Publish frontend assets (JavaScript, components)
-        $this->publishes([
-            __DIR__.'/../resources/js' => resource_path('js/vendor/shopify'),
-        ], 'shopify-frontend');
-
-        // Publish build configuration
-        $this->publishes([
-            __DIR__.'/../vite.config.js' => base_path('vite.config.js'),
-            __DIR__.'/../package.json' => base_path('package.json'),
-        ], 'shopify-build-config');
-
         // Load views
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'shopify');
 

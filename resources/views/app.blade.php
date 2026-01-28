@@ -10,7 +10,10 @@
     @vite(['resources/js/app.jsx'])
 </head>
 <body>
-    <div id="app"></div>
+    <div>
+        <h1>Welcome to your Shopify app</h1>
+        <p>Connected to shop: {{ request()->query('shop') ?? auth()->user()?->domain }}</p>
+    </div>
     
     <script>
         window.shopifyConfig = {
