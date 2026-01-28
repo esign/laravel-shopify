@@ -45,7 +45,6 @@ class ShopSoftDeleteTest extends TestCase
     {
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
-            'metadata' => ['plan' => 'pro'],
         ]);
 
         $originalAccessToken = $shop->access_token;
@@ -55,7 +54,6 @@ class ShopSoftDeleteTest extends TestCase
         $shop = Shop::withTrashed()->where('domain', 'test-shop.myshopify.com')->first();
 
         $this->assertEquals('test-shop.myshopify.com', $shop->domain);
-        $this->assertEquals(['plan' => 'pro'], $shop->metadata);
         $this->assertEquals($originalAccessToken, $shop->access_token);
     }
 

@@ -19,14 +19,12 @@ class Shop extends Authenticatable
         'token_refresh_count',
         'installed_at',
         'uninstalled_at',
-        'metadata',
     ];
 
     protected $casts = [
         'access_token' => 'encrypted', // Laravel 12 encrypted casting
         'refresh_token' => 'encrypted', // Encrypted like access_token
         'access_token_last_refreshed_at' => 'datetime',
-        'metadata' => 'array',
         'installed_at' => 'datetime',
         'uninstalled_at' => 'datetime',
         'deleted_at' => 'datetime',

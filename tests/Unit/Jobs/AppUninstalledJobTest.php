@@ -154,12 +154,10 @@ class AppUninstalledJobTest extends TestCase
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
-            'metadata' => ['plan' => 'premium', 'features' => ['analytics']],
         ]);
 
         $shopId = $shop->id;
         $originalDomain = $shop->domain;
-        $originalMetadata = $shop->metadata;
 
         $job = new AppUninstalledJob(
             shopDomain: 'test-shop.myshopify.com',
@@ -171,7 +169,6 @@ class AppUninstalledJobTest extends TestCase
         $shop = Shop::withTrashed()->find($shopId);
 
         $this->assertEquals($originalDomain, $shop->domain);
-        $this->assertEquals($originalMetadata, $shop->metadata);
         $this->assertTrue($shop->trashed());
     }
 }

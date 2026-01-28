@@ -24,7 +24,6 @@ return new class extends Migration
 
             $table->timestamp('installed_at')->nullable();
             $table->timestamp('uninstalled_at')->nullable(); // Business logic timestamp
-            $table->json('metadata')->nullable(); // Flexible field for app-specific data
             $table->timestamps();
             $table->softDeletes(); // Laravel soft delete support (deleted_at)
 

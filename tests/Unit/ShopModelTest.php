@@ -83,22 +83,6 @@ class ShopModelTest extends TestCase
     }
 
     /** @test */
-    public function it_casts_metadata_to_array()
-    {
-        $metadata = ['is_custom_app' => true, 'plan' => 'pro'];
-
-        $shop = Shop::create([
-            'domain' => 'test-shop.myshopify.com',
-            'access_token' => 'shpat_test_token',
-            'installed_at' => now(),
-            'metadata' => $metadata,
-        ]);
-
-        $this->assertIsArray($shop->metadata);
-        $this->assertEquals($metadata, $shop->metadata);
-    }
-
-    /** @test */
     public function it_has_correct_fillable_attributes()
     {
         $shop = new Shop;
@@ -113,7 +97,6 @@ class ShopModelTest extends TestCase
             'token_refresh_count',
             'installed_at',
             'uninstalled_at',
-            'metadata',
         ], $shop->getFillable());
     }
 

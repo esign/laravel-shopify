@@ -92,17 +92,6 @@ class CustomersRedactJob implements ShouldQueue
         //     ->where('customer_id', $customerId)
         //     ->delete();
 
-        // 3. Anonymize customer metadata (if you must keep records for accounting)
-        // CustomerMetadata::where('shop_id', $shop->id)
-        //     ->where('customer_id', $customerId)
-        //     ->update([
-        //         'email' => null,
-        //         'first_name' => 'REDACTED',
-        //         'last_name' => 'REDACTED',
-        //         'phone' => null,
-        //         'redacted_at' => now(),
-        //     ]);
-
         Log::info('GDPR: Customer personal data deleted', [
             'shop' => $shop->domain,
             'customer_id' => $customerId,
