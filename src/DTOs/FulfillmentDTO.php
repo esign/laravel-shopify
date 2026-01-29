@@ -3,6 +3,8 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Spatie\LaravelData\Attributes\DataCollectionOf;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Represents a fulfillment.
@@ -24,10 +26,10 @@ class FulfillmentDTO extends BaseDTO
         public ?string $orderId = null,
         public ?string $locationId = null,
         public ?string $service = null,
-        /** @var array */
-        public array $trackingInfo = [],
-        /** @var array */
-        public array $lineItems = [],
+        #[DataCollectionOf(FulfillmentTrackingInfoDTO::class)]
+        public ?DataCollection $trackingInfo = null,
+        #[DataCollectionOf(FulfillmentLineItemDTO::class)]
+        public ?DataCollection $fulfillmentLineItems = null,
         public bool $requiresShipping = true,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,

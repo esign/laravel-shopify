@@ -32,7 +32,10 @@ class ProductDTO extends BaseDTO
         public ?string $publishedAt = null,
         #[DataCollectionOf(ProductVariantDTO::class)]
         public ?DataCollection $variants = null,
+        #[Deprecated('Use media connection instead')]
         public array $images = [],
+        #[DataCollectionOf(MediaImageDTO::class)]
+        public ?DataCollection $media = null,
         #[DataCollectionOf(MetafieldDTO::class)]
         public ?DataCollection $metafields = null,
     ) {}

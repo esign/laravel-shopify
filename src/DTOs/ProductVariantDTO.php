@@ -3,6 +3,8 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Spatie\LaravelData\Attributes\DataCollectionOf;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Represents a version of a product that comes in more than one option,
@@ -20,7 +22,7 @@ class ProductVariantDTO extends BaseDTO
         public ?string $sku = null,
         public ?string $barcode = null,
         public ?MoneyV2DTO $price = null,
-        public ?string $compareAtPrice = null,
+        public ?MoneyV2DTO $compareAtPrice = null,
         public ?string $productId = null,
         public int $position = 0,
         public bool $availableForSale = false,
@@ -28,7 +30,10 @@ class ProductVariantDTO extends BaseDTO
         public ?int $inventoryQuantity = null,
         public ?string $inventoryItemId = null,
         public ?WeightDTO $weight = null,
-        public array $selectedOptions = [],
+        #[DataCollectionOf(SelectedOptionDTO::class)]
+        public ?DataCollection $selectedOptions = null,
+        #[DataCollectionOf(MetafieldDTO::class)]
+        public ?DataCollection $metafields = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}
