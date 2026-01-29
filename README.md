@@ -357,6 +357,126 @@ class GetAllProductsQuery implements PaginatedQuery
 $allProducts = Shopify::queryPaginated(new GetAllProductsQuery());
 ```
 
+## DTOs and Input Objects
+
+This package provides a comprehensive set of **Data Transfer Objects (DTOs)** and **Input objects** for working with Shopify entities. All classes are built using [Spatie Laravel Data](https://github.com/spatie/laravel-data) for type safety, validation, and extensibility.
+
+### Available Objects
+
+#### DTOs (Data Transfer Objects)
+
+DTOs represent Shopify resources returned from GraphQL queries:
+
+- **OrderDTO** - Order information with line items, addresses, and pricing
+- **CustomerDTO** - Customer data with addresses and purchase history
+- **ProductDTO** - Product details with variants and images
+- **MetafieldDTO** - Custom metafield data
+- **MetaobjectDTO** - Custom metaobject instances
+- **FulfillmentDTO** - Fulfillment and shipping information
+
+**Supporting DTOs:**
+- **MailingAddressDTO** - Customer and order addresses
+- **MoneyBagDTO** - Multi-currency pricing (shop and presentment currencies)
+- **MoneyV2DTO** - Single currency monetary values
+- **WeightDTO** - Weight measurements with units
+- **LineItemDTO** - Order line item details
+
+#### Input Objects
+
+Input objects are used in GraphQL mutations to create or update Shopify resources:
+
+- **OrderInput** - Update order information
+- **CustomerInput** - Create or update customers
+- **ProductInput** - Create or update products
+- **MetafieldInput** - Create or update metafields
+- **MetaobjectInput** - Create or update metaobject fields
+- **FulfillmentInput** - Create fulfillments
+
+**Supporting Inputs:**
+- **MailingAddressInput** - Address data for mutations
+- **MoneyInput** / **MoneyBagInput** - Monetary values
+- **WeightInput** - Weight data
+- **FulfillmentOrderLineItemsInput** - Fulfillment line items
+- **FulfillmentTrackingInput** - Tracking information
+- **FulfillmentOriginAddressInput** - Fulfillment origin address
+
+### Extensibility
+
+All DTOs and Input objects are designed to be **extended and overwritten** in your Shopify apps. This allows you to:
+
+- Add custom properties for store-specific needs
+- Override methods for custom transformations
+- Maintain compatibility with the base package while adding app-specific logic
+
+**Example: Extending OrderDTO**
+
+```php
+<?php
+
+namespace App\Shopify\DTOs;
+
+use Esign\LaravelShopify\DTOs\OrderDTO;
+
+class CustomOrderDTO extends OrderDTO
+{
+    public function __construct(
+        // Base OrderDTO properties
+        string $id,
+        string $name,
+        // ... other base properties
+        
+        // Your custom properties
+        public ?string $customField = null,
+        public ?array $customMetadata = null,
+    ) {
+        parent::__construct(
+            id: $id,
+            name: $name,
+            // ... pass other base properties
+        );
+    }
+    
+    // Override methods if needed
+    public function toArray(): array
+    {
+        $data = parent::toArray();
+        $data['custom_field'] = $this->customField;
+        return $data;
+    }
+}
+```
+
+**Example: Using Input Objects in Mutations**
+
+```php
+<?php
+
+use Esign\LaravelShopify\Inputs\CustomerInput;
+use Esign\LaravelShopify\Inputs\MailingAddressInput;
+
+$customerInput = new CustomerInput(
+    email: 'customer@example.com',
+    firstName: 'John',
+    lastName: 'Doe',
+    addresses: [
+        new MailingAddressInput(
+            address1: '123 Main St',
+            city: 'Toronto',
+            countryCode: 'CA',
+            provinceCode: 'ON',
+            zip: 'M5H 2N2',
+        ),
+    ],
+);
+
+// Use in your mutation
+$variables = [
+    'input' => $customerInput->toArray(),
+];
+```
+
+All objects use **camelCase** naming and follow Shopify's GraphQL schema exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`).
+
 ### Webhooks
 
 Webhooks are registered in your `shopify.app.toml` file and handled by Laravel jobs. The package includes built-in handlers for app lifecycle and GDPR compliance webhooks.
