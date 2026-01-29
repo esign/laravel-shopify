@@ -3,6 +3,8 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Spatie\LaravelData\Attributes\DataCollectionOf;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Represents a customer's request to purchase one or more products from a store.
@@ -32,8 +34,10 @@ class OrderDTO extends BaseDTO
         public ?MoneyBagDTO $currentShippingPriceSet = null,
         public ?MoneyBagDTO $currentTotalDiscountsSet = null,
         public ?int $currentTotalWeight = null,
-        /** @var LineItemDTO[] */
-        public array $lineItems = [],
+        #[DataCollectionOf(LineItemDTO::class)]
+        public ?DataCollection $lineItems = null,
+        #[DataCollectionOf(ShippingLineDTO::class)]
+        public ?DataCollection $shippingLines = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
         public ?string $processedAt = null,

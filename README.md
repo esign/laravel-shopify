@@ -363,42 +363,15 @@ This package provides a comprehensive set of **Data Transfer Objects (DTOs)** an
 
 ### Available Objects
 
-#### DTOs (Data Transfer Objects)
+The package includes DTOs and Input objects for common Shopify entities:
 
-DTOs represent Shopify resources returned from GraphQL queries:
+**Main DTOs** - Represent core Shopify resources like Orders, Customers, Products, Metafields, Metaobjects, and Fulfillments. These include all relevant fields and nested objects.
 
-- **OrderDTO** - Order information with line items, addresses, and pricing
-- **CustomerDTO** - Customer data with addresses and purchase history
-- **ProductDTO** - Product details with variants and images
-- **MetafieldDTO** - Custom metafield data
-- **MetaobjectDTO** - Custom metaobject instances
-- **FulfillmentDTO** - Fulfillment and shipping information
+**Supporting DTOs** - Represent commonly used nested objects such as MailingAddress, MoneyBag, MoneyV2, Weight, LineItem, ShippingLine, TaxLine, DiscountAllocation, and ProductVariant.
 
-**Supporting DTOs:**
-- **MailingAddressDTO** - Customer and order addresses
-- **MoneyBagDTO** - Multi-currency pricing (shop and presentment currencies)
-- **MoneyV2DTO** - Single currency monetary values
-- **WeightDTO** - Weight measurements with units
-- **LineItemDTO** - Order line item details
+**Input Objects** - Used in GraphQL mutations to create or update Shopify resources. Includes Input objects for Orders, Customers, Products, Metafields, Metaobjects, Fulfillments, and their supporting types.
 
-#### Input Objects
-
-Input objects are used in GraphQL mutations to create or update Shopify resources:
-
-- **OrderInput** - Update order information
-- **CustomerInput** - Create or update customers
-- **ProductInput** - Create or update products
-- **MetafieldInput** - Create or update metafields
-- **MetaobjectInput** - Create or update metaobject fields
-- **FulfillmentInput** - Create fulfillments
-
-**Supporting Inputs:**
-- **MailingAddressInput** - Address data for mutations
-- **MoneyInput** / **MoneyBagInput** - Monetary values
-- **WeightInput** - Weight data
-- **FulfillmentOrderLineItemsInput** - Fulfillment line items
-- **FulfillmentTrackingInput** - Tracking information
-- **FulfillmentOriginAddressInput** - Fulfillment origin address
+All objects follow Shopify's GraphQL schema naming conventions exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`) and use camelCase for properties.
 
 ### Extensibility
 

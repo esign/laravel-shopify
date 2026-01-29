@@ -3,6 +3,8 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Spatie\LaravelData\Attributes\DataCollectionOf;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Represents a product in a merchant's store.
@@ -28,11 +30,10 @@ class ProductDTO extends BaseDTO
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
         public ?string $publishedAt = null,
-        /** @var array */
-        public array $variants = [],
-        /** @var array */
+        #[DataCollectionOf(ProductVariantDTO::class)]
+        public ?DataCollection $variants = null,
         public array $images = [],
-        /** @var MetafieldDTO[] */
-        public array $metafields = [],
+        #[DataCollectionOf(MetafieldDTO::class)]
+        public ?DataCollection $metafields = null,
     ) {}
 }

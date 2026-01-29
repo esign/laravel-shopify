@@ -2,8 +2,6 @@
 
 namespace Esign\LaravelShopify\DTOs\Base;
 
-use Esign\LaravelShopify\Enums\GlobalIDObject;
-use Esign\LaravelShopify\Support\GlobalID;
 use Spatie\LaravelData\Data;
 
 /**

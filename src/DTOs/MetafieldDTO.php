@@ -3,6 +3,7 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\Enums\MetafieldOwnerType;
 
 /**
  * Represents a metafield attached to a Shopify resource.
@@ -23,7 +24,7 @@ class MetafieldDTO extends BaseDTO
         public string $value,
         public string $type,
         public ?string $ownerId = null,
-        public ?string $ownerType = null,
+        public ?MetafieldOwnerType $ownerType = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}

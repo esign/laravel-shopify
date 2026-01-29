@@ -3,6 +3,8 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Spatie\LaravelData\Attributes\DataCollectionOf;
+use Spatie\LaravelData\DataCollection;
 
 /**
  * Information about a customer of the shop.
@@ -25,8 +27,8 @@ class CustomerDTO extends BaseDTO
         public ?string $note = null,
         public array $tags = [],
         public ?MailingAddressDTO $defaultAddress = null,
-        /** @var MailingAddressDTO[] */
-        public array $addresses = [],
+        #[DataCollectionOf(MailingAddressDTO::class)]
+        public ?DataCollection $addresses = null,
         public ?MoneyV2DTO $amountSpent = null,
         public int $numberOfOrders = 0,
         public bool $taxExempt = false,
