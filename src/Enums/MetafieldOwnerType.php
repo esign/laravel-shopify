@@ -2,6 +2,8 @@
 
 namespace Esign\LaravelShopify\Enums;
 
+use Deprecated;
+
 /**
  * Possible types of a metafield's owner resource.
  *
@@ -33,5 +35,6 @@ enum MetafieldOwnerType: string
     case SELLING_PLAN = 'SELLING_PLAN';
     case SHOP = 'SHOP';
     case VALIDATION = 'VALIDATION';
-    case MEDIA_IMAGE = 'MEDIA_IMAGE'; // Deprecated
+    #[Deprecated('MEDIA_IMAGE is deprecated.')]
+    case MEDIA_IMAGE = 'MEDIA_IMAGE';
 }

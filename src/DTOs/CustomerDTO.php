@@ -2,9 +2,10 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
+use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
-use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Collection;
+use Spatie\LaravelData\Attributes\WithCast;
 
 /**
  * Information about a customer of the shop.
@@ -27,8 +28,8 @@ class CustomerDTO extends BaseDTO
         public ?string $note = null,
         public array $tags = [],
         public ?MailingAddressDTO $defaultAddress = null,
-        #[DataCollectionOf(MailingAddressDTO::class)]
-        public ?DataCollection $addresses = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: MailingAddressDTO::class)]
+        public ?Collection $addresses = null,
         public ?MoneyV2DTO $amountSpent = null,
         public int $numberOfOrders = 0,
         public bool $taxExempt = false,

@@ -2,9 +2,10 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
+use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
-use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Collection;
+use Spatie\LaravelData\Attributes\WithCast;
 
 /**
  * Represents a version of a product that comes in more than one option,
@@ -30,10 +31,10 @@ class ProductVariantDTO extends BaseDTO
         public ?int $inventoryQuantity = null,
         public ?string $inventoryItemId = null,
         public ?WeightDTO $weight = null,
-        #[DataCollectionOf(SelectedOptionDTO::class)]
-        public ?DataCollection $selectedOptions = null,
-        #[DataCollectionOf(MetafieldDTO::class)]
-        public ?DataCollection $metafields = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: SelectedOptionDTO::class)]
+        public ?Collection $selectedOptions = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: MetafieldDTO::class)]
+        public ?Collection $metafields = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}

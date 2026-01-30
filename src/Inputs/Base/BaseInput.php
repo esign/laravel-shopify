@@ -16,5 +16,8 @@ use Spatie\LaravelData\Data;
  */
 abstract class BaseInput extends Data
 {
-    //
+    public function toArray(): array
+    {
+        return array_filter($this->toArray());
+    }
 }

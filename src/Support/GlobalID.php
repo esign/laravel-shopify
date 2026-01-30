@@ -14,7 +14,7 @@ class GlobalID
     {
         if (str_starts_with($id, self::SHOPIFY_GID_PREFIX)) {
             $id = Str::afterLast($id, '/');
-
+            $id = self::stripQueryString($id);
             if (! is_numeric($id)) {
                 throw new InvalidArgumentException('Invalid global ID: '.$id);
             }
@@ -37,7 +37,7 @@ class GlobalID
         }
 
         $id = Str::afterLast($gid, '/');
-
+        $id = self::stripQueryString($id);
         if (! is_numeric($id)) {
             throw new InvalidArgumentException('Global ID does not contain a numeric ID: '.$gid);
         }
@@ -58,7 +58,7 @@ class GlobalID
             throw new InvalidArgumentException('Invalid Global ID format: '.$gid);
         }
 
-        $withoutPrefix = Str::after($gid, self::SHOPIFY_GID_PREFIX);
+        $withoutPrefix = Str::after(self::stripQueryString($gid), self::SHOPIFY_GID_PREFIX);
         $objectType = Str::before($withoutPrefix, '/');
 
         if (empty($objectType)) {
@@ -66,5 +66,18 @@ class GlobalID
         }
 
         return $objectType;
+    }
+
+    /**
+     * Strip query string from a GID or ID segment (e.g. parameterized GIDs).
+     * Shopify uses parameterized GIDs like: gid://shopify/InventoryLevel/123?inventory_item_id=456
+     *
+     * @see https://shopify.dev/docs/api/usage/gids#parameterized-global-ids
+     */
+    private static function stripQueryString(string $value): string
+    {
+        $questionMarkPos = strpos($value, '?');
+
+        return $questionMarkPos !== false ? substr($value, 0, $questionMarkPos) : $value;
     }
 }

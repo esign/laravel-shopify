@@ -2,9 +2,10 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
+use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
-use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Collection;
+use Spatie\LaravelData\Attributes\WithCast;
 
 /**
  * Represents a customer's request to purchase one or more products from a store.
@@ -34,10 +35,10 @@ class OrderDTO extends BaseDTO
         public ?MoneyBagDTO $currentShippingPriceSet = null,
         public ?MoneyBagDTO $currentTotalDiscountsSet = null,
         public ?int $currentTotalWeight = null,
-        #[DataCollectionOf(LineItemDTO::class)]
-        public ?DataCollection $lineItems = null,
-        #[DataCollectionOf(ShippingLineDTO::class)]
-        public ?DataCollection $shippingLines = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: LineItemDTO::class)]
+        public ?Collection $lineItems = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: ShippingLineDTO::class)]
+        public ?Collection $shippingLines = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
         public ?string $processedAt = null,

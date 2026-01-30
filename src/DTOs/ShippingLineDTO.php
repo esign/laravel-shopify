@@ -2,9 +2,10 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
+use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
-use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Collection;
+use Spatie\LaravelData\Attributes\WithCast;
 
 /**
  * Represents the shipping details that the customer chose for their order.
@@ -29,9 +30,9 @@ class ShippingLineDTO extends BaseDTO
         public ?MoneyBagDTO $currentDiscountedPriceSet = null,
         public bool $custom = false,
         public bool $isRemoved = false,
-        #[DataCollectionOf(TaxLineDTO::class)]
-        public ?DataCollection $taxLines = null,
-        #[DataCollectionOf(DiscountAllocationDTO::class)]
-        public ?DataCollection $discountAllocations = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: TaxLineDTO::class)]
+        public ?Collection $taxLines = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: DiscountAllocationDTO::class)]
+        public ?Collection $discountAllocations = null,
     ) {}
 }

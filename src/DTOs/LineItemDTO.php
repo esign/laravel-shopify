@@ -2,9 +2,10 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
+use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
 use Esign\LaravelShopify\DTOs\Base\BaseDTO;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
-use Spatie\LaravelData\DataCollection;
+use Illuminate\Support\Collection;
+use Spatie\LaravelData\Attributes\WithCast;
 
 /**
  * Represents a single product or service that a customer purchased in an order.
@@ -33,10 +34,10 @@ class LineItemDTO extends BaseDTO
         public ?MoneyBagDTO $originalTotalSet = null,
         public ?MoneyBagDTO $discountedTotalSet = null,
         public ?WeightDTO $weight = null,
-        #[DataCollectionOf(TaxLineDTO::class)]
-        public ?DataCollection $taxLines = null,
-        #[DataCollectionOf(DiscountAllocationDTO::class)]
-        public ?DataCollection $discountAllocations = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: TaxLineDTO::class)]
+        public ?Collection $taxLines = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: DiscountAllocationDTO::class)]
+        public ?Collection $discountAllocations = null,
         public bool $requiresShipping = true,
         public bool $taxable = true,
     ) {}
