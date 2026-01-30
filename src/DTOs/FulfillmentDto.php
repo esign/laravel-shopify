@@ -3,7 +3,7 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Attributes\WithCast;
 
@@ -18,20 +18,20 @@ use Spatie\LaravelData\Attributes\WithCast;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/Fulfillment
  */
-class FulfillmentDTO extends BaseDTO
+class FulfillmentDto extends BaseDto
 {
     public function __construct(
-        public string $id,
-        public string $name,
-        public string $status,
+        public ?string $id = null,
+        public ?string $name = null,
+        public ?string $status = null,
         public ?string $orderId = null,
         public ?string $locationId = null,
         public ?string $service = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: FulfillmentTrackingInfoDTO::class)]
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: FulfillmentTrackingInfoDto::class)]
         public ?Collection $trackingInfo = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: FulfillmentLineItemDTO::class)]
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: FulfillmentLineItemDto::class)]
         public ?Collection $fulfillmentLineItems = null,
-        public bool $requiresShipping = true,
+        public ?bool $requiresShipping = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
         public ?string $inTransitAt = null,

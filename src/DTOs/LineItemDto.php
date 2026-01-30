@@ -3,7 +3,7 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Attributes\WithCast;
 
@@ -17,28 +17,28 @@ use Spatie\LaravelData\Attributes\WithCast;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/LineItem
  */
-class LineItemDTO extends BaseDTO
+class LineItemDto extends BaseDto
 {
     public function __construct(
-        public string $id,
-        public string $name,
-        public string $title,
-        public int $quantity,
+        public ?string $id = null,
+        public ?string $name = null,
+        public ?string $title = null,
+        public ?int $quantity = null,
         public ?string $sku = null,
         public ?string $variantId = null,
         public ?string $variantTitle = null,
         public ?string $productId = null,
         public ?string $vendor = null,
-        public ?MoneyBagDTO $originalUnitPriceSet = null,
-        public ?MoneyBagDTO $discountedUnitPriceSet = null,
-        public ?MoneyBagDTO $originalTotalSet = null,
-        public ?MoneyBagDTO $discountedTotalSet = null,
-        public ?WeightDTO $weight = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: TaxLineDTO::class)]
+        public ?MoneyBagDto $originalUnitPriceSet = null,
+        public ?MoneyBagDto $discountedUnitPriceSet = null,
+        public ?MoneyBagDto $originalTotalSet = null,
+        public ?MoneyBagDto $discountedTotalSet = null,
+        public ?WeightDto $weight = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: TaxLineDto::class)]
         public ?Collection $taxLines = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: DiscountAllocationDTO::class)]
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: DiscountAllocationDto::class)]
         public ?Collection $discountAllocations = null,
-        public bool $requiresShipping = true,
-        public bool $taxable = true,
+        public ?bool $requiresShipping = null,
+        public ?bool $taxable = null,
     ) {}
 }

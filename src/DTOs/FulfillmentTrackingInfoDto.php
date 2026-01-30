@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * Represents the tracking information for a fulfillment.
@@ -11,7 +11,7 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/FulfillmentTrackingInfo
  */
-class FulfillmentTrackingInfoDTO extends BaseDTO
+class FulfillmentTrackingInfoDto extends BaseDto
 {
     public function __construct(
         public ?string $company = null,

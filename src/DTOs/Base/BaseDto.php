@@ -5,7 +5,7 @@ namespace Esign\LaravelShopify\DTOs\Base;
 use Spatie\LaravelData\Data;
 
 /**
- * Base DTO class for all Shopify DTOs.
+ * Base Dto class for all Shopify DTOs.
  *
  * This abstract class provides a foundation for all Data Transfer Objects
  * in the package. It extends Spatie's Data class to provide type safety,
@@ -14,7 +14,7 @@ use Spatie\LaravelData\Data;
  * All DTOs in this package can be extended in individual Shopify apps
  * to add custom properties or override methods as needed.
  */
-abstract class BaseDTO extends Data
+abstract class BaseDto extends Data
 {
    // 
 }

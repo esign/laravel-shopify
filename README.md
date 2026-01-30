@@ -381,21 +381,21 @@ All DTOs and Input objects are designed to be **extended and overwritten** in yo
 - Override methods for custom transformations
 - Maintain compatibility with the base package while adding app-specific logic
 
-**Example: Extending OrderDTO**
+**Example: Extending OrderDto**
 
 ```php
 <?php
 
 namespace App\Shopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\OrderDTO;
+use Esign\LaravelShopify\DTOs\OrderDto;
 
-class CustomOrderDTO extends OrderDTO
+class CustomOrderDto extends OrderDto
 {
     public function __construct(
-        // Base OrderDTO properties
-        string $id,
-        string $name,
+        // Base OrderDto properties
+        ?string $id = null,
+        ?string $name = null,
         // ... other base properties
         
         // Your custom properties

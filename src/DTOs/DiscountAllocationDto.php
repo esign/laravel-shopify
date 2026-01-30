@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * The actual amount discounted on a line item or shipping line.
@@ -15,10 +15,10 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/DiscountAllocation
  */
-class DiscountAllocationDTO extends BaseDTO
+class DiscountAllocationDto extends BaseDto
 {
     public function __construct(
-        public MoneyBagDTO $allocatedAmountSet,
+        public ?MoneyBagDto $allocatedAmountSet = null,
         public ?string $discountApplicationId = null,
     ) {}
 }

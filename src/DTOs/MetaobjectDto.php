@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * An instance of custom structured data defined by a MetaobjectDefinition.
@@ -14,15 +14,15 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/Metaobject
  */
-class MetaobjectDTO extends BaseDTO
+class MetaobjectDto extends BaseDto
 {
     public function __construct(
-        public string $id,
-        public string $type,
-        public string $handle,
-        public string $displayName,
+        public ?string $id = null,
+        public ?string $type = null,
+        public ?string $handle = null,
+        public ?string $displayName = null,
         /** @var array */
-        public array $fields = [],
+        public ?array $fields = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}

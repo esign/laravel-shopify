@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Esign\LaravelShopify\Enums\MediaPreviewImageStatus;
 
 /**
@@ -12,10 +12,10 @@ use Esign\LaravelShopify\Enums\MediaPreviewImageStatus;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/MediaPreviewImage
  */
-class MediaPreviewImageDTO extends BaseDTO
+class MediaPreviewImageDto extends BaseDto
 {
     public function __construct(
-        public ?ImageDTO $image = null,
-        public MediaPreviewImageStatus $status,
+        public ?ImageDto $image = null,
+        public ?MediaPreviewImageStatus $status = null,
     ) {}
 }

@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * Represents a customer mailing address.
@@ -14,7 +14,7 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/MailingAddress
  */
-class MailingAddressDTO extends BaseDTO
+class MailingAddressDto extends BaseDto
 {
     public function __construct(
         public ?string $id = null,

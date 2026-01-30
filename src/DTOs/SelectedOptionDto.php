@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * Properties used by customers to select a product variant.
@@ -13,12 +13,12 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/SelectedOption
  */
-class SelectedOptionDTO extends BaseDTO
+class SelectedOptionDto extends BaseDto
 {
     public function __construct(
-        public string $name,
-        public string $value,
+        public ?string $name = null,
+        public ?string $value = null,
         // Note: optionValue is ProductOptionValue object, but we'll keep it simple for now
-        // If needed, can create ProductOptionValueDTO later
+        // If needed, can create ProductOptionValueDto later
     ) {}
 }

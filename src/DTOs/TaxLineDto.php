@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * Represents a single tax applied to the associated line item.
@@ -11,11 +11,11 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/TaxLine
  */
-class TaxLineDTO extends BaseDTO
+class TaxLineDto extends BaseDto
 {
     public function __construct(
-        public string $title,
-        public MoneyBagDTO $priceSet,
+        public ?string $title = null,
+        public ?MoneyBagDto $priceSet = null,
         public ?float $rate = null,
         public ?float $ratePercentage = null,
         public ?string $source = null,

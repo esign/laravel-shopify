@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * Represents an image resource.
@@ -11,7 +11,7 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/Image
  */
-class ImageDTO extends BaseDTO
+class ImageDto extends BaseDto
 {
     public function __construct(
         public ?string $id = null,

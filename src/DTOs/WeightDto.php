@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Esign\LaravelShopify\Enums\WeightUnit;
 
 /**
@@ -15,10 +15,10 @@ use Esign\LaravelShopify\Enums\WeightUnit;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/Weight
  */
-class WeightDTO extends BaseDTO
+class WeightDto extends BaseDto
 {
     public function __construct(
-        public float $value,
-        public WeightUnit $unit,
+        public ?float $value = null,
+        public ?WeightUnit $unit = null,
     ) {}
 }

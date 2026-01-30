@@ -3,7 +3,7 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Attributes\WithCast;
 
@@ -15,25 +15,25 @@ use Spatie\LaravelData\Attributes\WithCast;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/ProductVariant
  */
-class ProductVariantDTO extends BaseDTO
+class ProductVariantDto extends BaseDto
 {
     public function __construct(
-        public string $id,
-        public string $title,
+        public ?string $id = null,
+        public ?string $title = null,
         public ?string $sku = null,
         public ?string $barcode = null,
-        public ?MoneyV2DTO $price = null,
-        public ?MoneyV2DTO $compareAtPrice = null,
+        public ?MoneyV2Dto $price = null,
+        public ?MoneyV2Dto $compareAtPrice = null,
         public ?string $productId = null,
-        public int $position = 0,
-        public bool $availableForSale = false,
-        public bool $taxable = true,
+        public ?int $position = null,
+        public ?bool $availableForSale = null,
+        public ?bool $taxable = null,
         public ?int $inventoryQuantity = null,
         public ?string $inventoryItemId = null,
-        public ?WeightDTO $weight = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: SelectedOptionDTO::class)]
+        public ?WeightDto $weight = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: SelectedOptionDto::class)]
         public ?Collection $selectedOptions = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: MetafieldDTO::class)]
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: MetafieldDto::class)]
         public ?Collection $metafields = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,

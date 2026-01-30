@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * A collection of monetary values in their respective currencies.
@@ -15,10 +15,10 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/MoneyBag
  */
-class MoneyBagDTO extends BaseDTO
+class MoneyBagDto extends BaseDto
 {
     public function __construct(
-        public MoneyV2DTO $shopMoney,
-        public MoneyV2DTO $presentmentMoney,
+        public ?MoneyV2Dto $shopMoney = null,
+        public ?MoneyV2Dto $presentmentMoney = null,
     ) {}
 }

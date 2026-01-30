@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Esign\LaravelShopify\Enums\MetafieldOwnerType;
 
 /**
@@ -15,14 +15,14 @@ use Esign\LaravelShopify\Enums\MetafieldOwnerType;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/Metafield
  */
-class MetafieldDTO extends BaseDTO
+class MetafieldDto extends BaseDto
 {
     public function __construct(
-        public string $id,
-        public string $namespace,
-        public string $key,
-        public string $value,
-        public string $type,
+        public ?string $id = null,
+        public ?string $namespace = null,
+        public ?string $key = null,
+        public ?string $value = null,
+        public ?string $type = null,
         public ?string $ownerId = null,
         public ?MetafieldOwnerType $ownerType = null,
         public ?string $createdAt = null,

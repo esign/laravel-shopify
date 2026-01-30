@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * Represents a precise monetary value and its associated currency.
@@ -11,10 +11,10 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/MoneyV2
  */
-class MoneyV2DTO extends BaseDTO
+class MoneyV2Dto extends BaseDto
 {
     public function __construct(
-        public string $amount,
-        public string $currencyCode,
+        public ?string $amount = null,
+        public ?string $currencyCode = null,
     ) {}
 }

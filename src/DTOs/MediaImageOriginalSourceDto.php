@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\DTOs;
 
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 
 /**
  * The original source for an image.
@@ -11,7 +11,7 @@ use Esign\LaravelShopify\DTOs\Base\BaseDTO;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/MediaImageOriginalSource
  */
-class MediaImageOriginalSourceDTO extends BaseDTO
+class MediaImageOriginalSourceDto extends BaseDto
 {
     public function __construct(
         public ?int $fileSize = null,

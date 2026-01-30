@@ -3,7 +3,7 @@
 namespace Esign\LaravelShopify\DTOs;
 
 use Esign\LaravelShopify\Casts\NodesToCollectionOfModelsCaster;
-use Esign\LaravelShopify\DTOs\Base\BaseDTO;
+use Esign\LaravelShopify\DTOs\Base\BaseDto;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Attributes\WithCast;
 
@@ -16,24 +16,24 @@ use Spatie\LaravelData\Attributes\WithCast;
  *
  * @see https://shopify.dev/api/admin-graphql/latest/objects/Customer
  */
-class CustomerDTO extends BaseDTO
+class CustomerDto extends BaseDto
 {
     public function __construct(
-        public string $id,
+        public ?string $id = null,
         public ?string $firstName = null,
         public ?string $lastName = null,
         public ?string $email = null,
         public ?string $phone = null,
         public ?string $displayName = null,
         public ?string $note = null,
-        public array $tags = [],
-        public ?MailingAddressDTO $defaultAddress = null,
-        #[WithCast(NodesToCollectionOfModelsCaster::class, model: MailingAddressDTO::class)]
+        public ?array $tags = null,
+        public ?MailingAddressDto $defaultAddress = null,
+        #[WithCast(NodesToCollectionOfModelsCaster::class, model: MailingAddressDto::class)]
         public ?Collection $addresses = null,
-        public ?MoneyV2DTO $amountSpent = null,
-        public int $numberOfOrders = 0,
-        public bool $taxExempt = false,
-        public bool $verifiedEmail = false,
+        public ?MoneyV2Dto $amountSpent = null,
+        public ?int $numberOfOrders = null,
+        public ?bool $taxExempt = null,
+        public ?bool $verifiedEmail = null,
         public ?string $createdAt = null,
         public ?string $updatedAt = null,
     ) {}
