@@ -1,13 +1,25 @@
 {
     "name": "esign/laravel-shopify",
     "description": "A modern Laravel package for Shopify app development",
-    "keywords": ["laravel", "shopify", "shopify-app", "oauth", "graphql", "webhooks"],
+    "keywords": [
+        "laravel",
+        "shopify",
+        "shopify-app",
+        "graphql",
+        "webhooks"
+    ],
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Esign",
-            "email": "info@esign.eu"
+            "name": "Cedric Vleminckx",
+            "email": "cedric.vleminckx@dynamate.be",
+            "role": "Developer"
+        },
+        {
+            "name": "Lorenzo Verheecke",
+            "email": "lorenzo.verheecke@dynamate.be",
+            "role": "Developer"
         }
     ],
     "require": {

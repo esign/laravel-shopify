@@ -7,7 +7,6 @@
     <title>{{ config('app.name') }}</title>
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
-    @vite(['resources/js/app.jsx'])
 </head>
 <body>
     <div>

@@ -22,8 +22,8 @@ class Shop extends Authenticatable
     ];
 
     protected $casts = [
-        'access_token' => 'encrypted', // Laravel 12 encrypted casting
-        'refresh_token' => 'encrypted', // Encrypted like access_token
+        'access_token' => 'encrypted',
+        'refresh_token' => 'encrypted',
         'access_token_last_refreshed_at' => 'datetime',
         'installed_at' => 'datetime',
         'uninstalled_at' => 'datetime',
