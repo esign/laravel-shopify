@@ -323,6 +323,99 @@ class GetAllProductsQuery implements PaginatedQuery
 $allProducts = Shopify::queryPaginated(new GetAllProductsQuery());
 ```
 
+## DTOs and Input Objects
+
+This package provides a comprehensive set of **Data Transfer Objects (DTOs)** and **Input objects** for working with Shopify entities. All classes are built using [Spatie Laravel Data](https://github.com/spatie/laravel-data) for type safety, validation, and extensibility.
+
+### Available Objects
+
+The package includes DTOs and Input objects for common Shopify entities:
+
+**Main DTOs** - Represent core Shopify resources like Orders, Customers, Products, Metafields, Metaobjects, and Fulfillments. These include all relevant fields and nested objects.
+
+**Supporting DTOs** - Represent commonly used nested objects such as MailingAddress, MoneyBag, MoneyV2, Weight, LineItem, ShippingLine, TaxLine, DiscountAllocation, and ProductVariant.
+
+**Input Objects** - Used in GraphQL mutations to create or update Shopify resources. Includes Input objects for Orders, Customers, Products, Metafields, Metaobjects, Fulfillments, and their supporting types.
+
+All objects follow Shopify's GraphQL schema naming conventions exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`) and use camelCase for properties.
+
+### Extensibility
+
+All DTOs and Input objects are designed to be **extended and overwritten** in your Shopify apps. This allows you to:
+
+- Add custom properties for store-specific needs
+- Override methods for custom transformations
+- Maintain compatibility with the base package while adding app-specific logic
+
+**Example: Extending OrderDto**
+
+```php
+<?php
+
+namespace App\Shopify\DTOs;
+
+use Esign\LaravelShopify\DTOs\OrderDto;
+
+class CustomOrderDto extends OrderDto
+{
+    public function __construct(
+        // Base OrderDto properties
+        ?string $id = null,
+        ?string $name = null,
+        // ... other base properties
+        
+        // Your custom properties
+        public ?string $customField = null,
+        public ?array $customMetadata = null,
+    ) {
+        parent::__construct(
+            id: $id,
+            name: $name,
+            // ... pass other base properties
+        );
+    }
+    
+    // Override methods if needed
+    public function toArray(): array
+    {
+        $data = parent::toArray();
+        $data['custom_field'] = $this->customField;
+        return $data;
+    }
+}
+```
+
+**Example: Using Input Objects in Mutations**
+
+```php
+<?php
+
+use Esign\LaravelShopify\Inputs\CustomerInput;
+use Esign\LaravelShopify\Inputs\MailingAddressInput;
+
+$customerInput = new CustomerInput(
+    email: 'customer@example.com',
+    firstName: 'John',
+    lastName: 'Doe',
+    addresses: [
+        new MailingAddressInput(
+            address1: '123 Main St',
+            city: 'Toronto',
+            countryCode: 'CA',
+            provinceCode: 'ON',
+            zip: 'M5H 2N2',
+        ),
+    ],
+);
+
+// Use in your mutation
+$variables = [
+    'input' => $customerInput->toArray(),
+];
+```
+
+All objects use **camelCase** naming and follow Shopify's GraphQL schema exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`).
+
 ### Webhooks
 
 Webhooks are registered in your `shopify.app.toml` file and handled by Laravel jobs. The package includes built-in handlers for app lifecycle and GDPR compliance webhooks.
