@@ -132,12 +132,6 @@ class Client
             invalidTokenResponse: null,
         );
 
-        if (! $result->ok) {
-            throw new \Exception(
-                "GraphQL request failed: {$result->log->code} - {$result->log->detail}"
-            );
-        }
-
         return $result;
     }
 
