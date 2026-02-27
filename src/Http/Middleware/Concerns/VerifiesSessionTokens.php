@@ -60,7 +60,7 @@ trait VerifiesSessionTokens
         }
 
         $parsedUrl = parse_url($idToken->claims['dest']);
-        $shopDomain = $parsedUrl['host'] ?? null;
+        $shopDomain = $parsedUrl['path'] ?? null;
 
         if (! $shopDomain) {
             throw new ShopifyAuthenticationException(
@@ -123,14 +123,6 @@ trait VerifiesSessionTokens
             throw new ShopifyAuthenticationException(
                 $requestType,
                 'Shop has been uninstalled',
-                $shopDomain
-            );
-        }
-
-        if (! $shop->access_token) {
-            throw new ShopifyAuthenticationException(
-                $requestType,
-                'Shop has no access token',
                 $shopDomain
             );
         }
