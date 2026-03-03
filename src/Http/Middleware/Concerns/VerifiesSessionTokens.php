@@ -176,7 +176,6 @@ trait VerifiesSessionTokens
                 'refresh_token' => $accessToken->refreshToken ?? null,
                 'refresh_token_expires_at' => $accessToken->refreshTokenExpires ?? null,
                 'access_token_last_refreshed_at' => now(),
-                'token_refresh_count' => 0, // Reset on full exchange
             ]);
 
             return $shop->fresh();

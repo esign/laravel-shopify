@@ -109,13 +109,11 @@ class TokenRefreshService
                 'refresh_token' => $newAccessToken->refreshToken, // NEW refresh token!
                 'refresh_token_expires_at' => $newAccessToken->refreshTokenExpires,
                 'access_token_last_refreshed_at' => now(),
-                'token_refresh_count' => $shop->token_refresh_count + 1,
             ]);
 
             Log::info('Token refresh successful', [
                 'shop' => $shop->domain,
                 'new_expires_at' => $newAccessToken->expires,
-                'refresh_count' => $shop->token_refresh_count + 1,
             ]);
 
             return true;

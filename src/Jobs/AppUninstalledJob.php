@@ -65,7 +65,6 @@ class AppUninstalledJob implements ShouldQueue
             'refresh_token' => null,
             'refresh_token_expires_at' => null,
             'access_token_last_refreshed_at' => null,
-            'token_refresh_count' => 0,
         ]);
 
         Log::info('Shop tokens cleared', [

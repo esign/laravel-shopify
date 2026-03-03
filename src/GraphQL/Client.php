@@ -38,8 +38,6 @@ class Client
 
         $response = $this->executeGraphQL($query->query(), $query->variables());
 
-        $this->handleErrors($response);
-
         return $query->mapFromResponse($response);
     }
 
@@ -51,8 +49,6 @@ class Client
         $this->logOperation('mutation', $mutation->query(), $mutation->variables());
 
         $response = $this->executeGraphQL($mutation->query(), $mutation->variables());
-
-        $this->handleErrors($response);
 
         return $mutation->mapFromResponse($response);
     }
@@ -69,8 +65,6 @@ class Client
 
             $response = $this->executeGraphQL($query->query(), $query->variables());
 
-            $this->handleErrors($response);
-
             $results[] = $query->mapFromResponse($response);
         } while ($query->hasNextPage($response));
 
@@ -80,38 +74,44 @@ class Client
     /**
      * Execute GraphQL request using Shopify's official adminGraphQLRequest method.
      * Automatically handles token refresh if authentication fails.
+     * Handles all errors before returning result.
+     *
+     * @throws TokenRefreshRequiredException if token refresh fails
+     * @throws GraphQLErrorException if GraphQL errors occur
+     * @throws GraphQLUserErrorException if user errors occur
      */
     protected function executeGraphQL(string $query, array $variables = []): GQLResult
     {
-        try {
-            return $this->makeGraphQLRequest($query, $variables);
-        } catch (\Exception $e) {
-            // If authentication error, attempt token refresh and retry
-            if ($this->isAuthenticationError($e)) {
-                Log::info('GraphQL authentication error detected, attempting token refresh', [
+        $result = $this->makeGraphQLRequest($query, $variables);
+
+        // Check for authentication errors (retriable)
+        if (! $result->ok && $this->isAuthenticationError($result)) {
+            Log::info('GraphQL authentication error detected, attempting token refresh', [
+                'shop' => $this->shop->domain,
+                'error_code' => $result->log->code,
+                'error_detail' => $result->log->detail,
+            ]);
+
+            if ($this->attemptTokenRefresh()) {
+                Log::info('Token refresh successful, retrying GraphQL request', [
                     'shop' => $this->shop->domain,
-                    'error' => $e->getMessage(),
                 ]);
 
-                if ($this->attemptTokenRefresh()) {
-                    Log::info('Token refresh successful, retrying GraphQL request', [
-                        'shop' => $this->shop->domain,
-                    ]);
-
-                    // Retry the request with refreshed token
-                    return $this->makeGraphQLRequest($query, $variables);
-                }
-
+                // Retry the request with refreshed token
+                $result = $this->makeGraphQLRequest($query, $variables);
+            } else {
                 // Token refresh failed, throw exception to trigger page reload
                 throw new TokenRefreshRequiredException(
                     'Token refresh failed. Please reload the page to re-authenticate.',
                     $this->shop
                 );
             }
-
-            // Re-throw non-authentication errors
-            throw $e;
         }
+
+        // Handle all errors (non-auth errors, or auth error after failed refresh)
+        $this->handleErrors($result);
+
+        return $result;
     }
 
     /**
@@ -163,18 +163,32 @@ class Client
     }
 
     /**
-     * Check if the exception indicates an authentication error.
+     * Check if the GQLResult indicates an authentication error.
      */
-    protected function isAuthenticationError(\Exception $e): bool
+    protected function isAuthenticationError(GQLResult $result): bool
     {
-        $message = strtolower($e->getMessage());
+        // Check if request failed
+        if ($result->ok) {
+            return false;
+        }
 
-        // Check for common authentication error patterns
-        return str_contains($message, 'unauthorized')
-            || str_contains($message, '401')
-            || str_contains($message, '403')
-            || str_contains($message, 'invalid access token')
-            || str_contains($message, 'expired')
-            || str_contains($message, 'authentication');
+        // Check for auth-related error codes
+        $authErrorCodes = [
+            'unauthorized',
+            'invalid_access_token',
+            'invalid_token',
+            'token_expired',
+        ];
+
+        if (in_array($result->log->code, $authErrorCodes)) {
+            return true;
+        }
+
+        // Also check HTTP status code
+        if ($result->response && $result->response->status === 401) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -24,7 +24,7 @@ class ShopModelTest extends TestCase
     }
 
     /** @test */
-    public function it_encrypts_access_token()
+    public function it_stores_access_token_as_plain_text()
     {
         $plainToken = 'shpat_test_token_123';
 
@@ -34,11 +34,11 @@ class ShopModelTest extends TestCase
             'installed_at' => now(),
         ]);
 
-        // Token should be encrypted in database
+        // Token should be stored as plain text in database
         $raw = $this->app['db']->table('shops')->where('id', $shop->id)->first();
-        $this->assertNotEquals($plainToken, $raw->access_token);
+        $this->assertEquals($plainToken, $raw->access_token);
 
-        // But should decrypt correctly when accessed
+        // And should be accessible as expected
         $this->assertEquals($plainToken, $shop->access_token);
     }
 
@@ -94,7 +94,6 @@ class ShopModelTest extends TestCase
             'refresh_token',
             'refresh_token_expires_at',
             'access_token_last_refreshed_at',
-            'token_refresh_count',
             'installed_at',
             'uninstalled_at',
         ], $shop->getFillable());

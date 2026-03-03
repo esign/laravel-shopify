@@ -468,4 +468,442 @@ class GraphQLClientTest extends TestCase
             $this->assertStringContainsString('GraphQL request failed: graphql_errors - GraphQL request returned errors', $e->getMessage());
         }
     }
+
+    /** @test */
+    public function it_refreshes_token_when_unauthorized_error_code_returned()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'refresh_token' => 'valid_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $query = new class implements Query
+        {
+            public function query(): string
+            {
+                return 'query { shop { name } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            {
+                return $response->data['shop'];
+            }
+        };
+
+        // First call returns unauthorized error
+        $unauthorizedResult = new GQLResult(
+            ok: false,
+            shop: null,
+            data: null,
+            extensions: null,
+            log: new Log('unauthorized', 'Access token is invalid or has been revoked.'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 401, body: '', headers: []),
+        );
+
+        // Second call (after token refresh) returns success
+        $successResult = new GQLResult(
+            ok: true,
+            shop: $shop->domain,
+            data: ['shop' => ['name' => 'Test Shop']],
+            extensions: null,
+            log: new Log('ok', 'Success'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: []),
+        );
+
+        // Mock ShopifyApp to return unauthorized first, then success
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->exactly(2))
+            ->method('adminGraphQLRequest')
+            ->willReturnOnConsecutiveCalls($unauthorizedResult, $successResult);
+
+        // Mock TokenRefreshService to succeed
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->once())
+            ->method('refreshAccessToken')
+            ->with($shop)
+            ->willReturn(true);
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $client = new Client($shop);
+
+        // Inject mocked ShopifyApp
+        $reflection = new \ReflectionClass($client);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setAccessible(true);
+        $property->setValue($client, $mockShopifyApp);
+
+        $result = $client->query($query);
+
+        $this->assertEquals(['name' => 'Test Shop'], $result);
+    }
+
+    /** @test */
+    public function it_refreshes_token_when_401_status_code_returned()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'refresh_token' => 'valid_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $query = new class implements Query
+        {
+            public function query(): string
+            {
+                return 'query { shop { name } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            {
+                return $response->data['shop'];
+            }
+        };
+
+        // First call returns 401 status
+        $unauthorizedResult = new GQLResult(
+            ok: false,
+            shop: null,
+            data: null,
+            extensions: null,
+            log: new Log('http_error', 'HTTP 401'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 401, body: '', headers: []),
+        );
+
+        // Second call succeeds
+        $successResult = new GQLResult(
+            ok: true,
+            shop: $shop->domain,
+            data: ['shop' => ['name' => 'Test Shop']],
+            extensions: null,
+            log: new Log('ok', 'Success'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: []),
+        );
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->exactly(2))
+            ->method('adminGraphQLRequest')
+            ->willReturnOnConsecutiveCalls($unauthorizedResult, $successResult);
+
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->once())
+            ->method('refreshAccessToken')
+            ->with($shop)
+            ->willReturn(true);
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $client = new Client($shop);
+
+        $reflection = new \ReflectionClass($client);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setAccessible(true);
+        $property->setValue($client, $mockShopifyApp);
+
+        $result = $client->query($query);
+
+        $this->assertEquals(['name' => 'Test Shop'], $result);
+    }
+
+    /** @test */
+    public function it_throws_token_refresh_required_when_refresh_fails()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'refresh_token' => 'expired_refresh_token',
+            'refresh_token_expires_at' => now()->subDay(),
+        ]);
+
+        $query = new class implements Query
+        {
+            public function query(): string
+            {
+                return 'query { shop { name } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            {
+                return $response->data;
+            }
+        };
+
+        // Returns unauthorized error
+        $unauthorizedResult = new GQLResult(
+            ok: false,
+            shop: null,
+            data: null,
+            extensions: null,
+            log: new Log('unauthorized', 'Access token is invalid or has been revoked.'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 401, body: '', headers: []),
+        );
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->once())
+            ->method('adminGraphQLRequest')
+            ->willReturn($unauthorizedResult);
+
+        // Mock TokenRefreshService to fail
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->once())
+            ->method('refreshAccessToken')
+            ->with($shop)
+            ->willReturn(false);
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $client = new Client($shop);
+
+        $reflection = new \ReflectionClass($client);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setAccessible(true);
+        $property->setValue($client, $mockShopifyApp);
+
+        $this->expectException(\Esign\LaravelShopify\Exceptions\TokenRefreshRequiredException::class);
+        $this->expectExceptionMessage('Token refresh failed. Please reload the page to re-authenticate.');
+
+        $client->query($query);
+    }
+
+    /** @test */
+    public function it_handles_non_auth_errors_normally()
+    {
+        $shop = $this->createShop();
+
+        $query = new class implements Query
+        {
+            public function query(): string
+            {
+                return 'query { shop { name } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            {
+                return $response->data;
+            }
+        };
+
+        // Return rate limit error (non-auth error)
+        $rateLimitResult = new GQLResult(
+            ok: false,
+            shop: null,
+            data: null,
+            extensions: null,
+            log: new Log('rate_limited', 'Max retries reached after rate limiting.'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 429, body: '', headers: []),
+        );
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->once())
+            ->method('adminGraphQLRequest')
+            ->willReturn($rateLimitResult);
+
+        $client = new Client($shop);
+
+        $reflection = new \ReflectionClass($client);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setAccessible(true);
+        $property->setValue($client, $mockShopifyApp);
+
+        $this->expectException(\Esign\LaravelShopify\GraphQL\Exceptions\GraphQLErrorException::class);
+        $this->expectExceptionMessage('GraphQL request failed: rate_limited - Max retries reached after rate limiting.');
+
+        $client->query($query);
+    }
+
+    /** @test */
+    public function it_refreshes_token_for_mutations()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'refresh_token' => 'valid_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $mutation = new class implements \Esign\LaravelShopify\GraphQL\Contracts\Mutation
+        {
+            public function query(): string
+            {
+                return 'mutation { productCreate(input: {}) { product { id } } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            {
+                return $response->data['productCreate'];
+            }
+        };
+
+        // First call returns unauthorized
+        $unauthorizedResult = new GQLResult(
+            ok: false,
+            shop: null,
+            data: null,
+            extensions: null,
+            log: new Log('unauthorized', 'Access token is invalid or has been revoked.'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 401, body: '', headers: []),
+        );
+
+        // Second call succeeds
+        $successResult = new GQLResult(
+            ok: true,
+            shop: $shop->domain,
+            data: ['productCreate' => ['product' => ['id' => 'gid://shopify/Product/123']]],
+            extensions: null,
+            log: new Log('ok', 'Success'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: []),
+        );
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->exactly(2))
+            ->method('adminGraphQLRequest')
+            ->willReturnOnConsecutiveCalls($unauthorizedResult, $successResult);
+
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->once())
+            ->method('refreshAccessToken')
+            ->with($shop)
+            ->willReturn(true);
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $client = new Client($shop);
+
+        $reflection = new \ReflectionClass($client);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setAccessible(true);
+        $property->setValue($client, $mockShopifyApp);
+
+        $result = $client->mutation($mutation);
+
+        $this->assertEquals(['product' => ['id' => 'gid://shopify/Product/123']], $result);
+    }
+
+    /** @test */
+    public function it_refreshes_token_during_pagination()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'refresh_token' => 'valid_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $paginatedQuery = new class implements \Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery
+        {
+            private int $callCount = 0;
+
+            public function query(): string
+            {
+                return 'query { products { edges { node { id } } pageInfo { hasNextPage } } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            {
+                return $response->data['products']['edges'];
+            }
+
+            public function hasNextPage(\Shopify\App\Types\GQLResult $response): bool
+            {
+                $this->callCount++;
+
+                return $this->callCount < 2; // Only one more page
+            }
+        };
+
+        // First call returns success
+        $firstPageResult = new GQLResult(
+            ok: true,
+            shop: $shop->domain,
+            data: ['products' => ['edges' => [['node' => ['id' => '1']]], 'pageInfo' => ['hasNextPage' => true]]],
+            extensions: null,
+            log: new Log('ok', 'Success'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: []),
+        );
+
+        // Second call returns unauthorized (token expired during pagination)
+        $unauthorizedResult = new GQLResult(
+            ok: false,
+            shop: null,
+            data: null,
+            extensions: null,
+            log: new Log('unauthorized', 'Access token is invalid or has been revoked.'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 401, body: '', headers: []),
+        );
+
+        // Third call (after refresh) returns success
+        $secondPageResult = new GQLResult(
+            ok: true,
+            shop: $shop->domain,
+            data: ['products' => ['edges' => [['node' => ['id' => '2']]], 'pageInfo' => ['hasNextPage' => false]]],
+            extensions: null,
+            log: new Log('ok', 'Success'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: []),
+        );
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->exactly(3))
+            ->method('adminGraphQLRequest')
+            ->willReturnOnConsecutiveCalls($firstPageResult, $unauthorizedResult, $secondPageResult);
+
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->once())
+            ->method('refreshAccessToken')
+            ->with($shop)
+            ->willReturn(true);
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $client = new Client($shop);
+
+        $reflection = new \ReflectionClass($client);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setAccessible(true);
+        $property->setValue($client, $mockShopifyApp);
+
+        $results = $client->queryPaginated($paginatedQuery);
+
+        $this->assertCount(2, $results);
+        $this->assertEquals(['node' => ['id' => '1']], $results[0]);
+        $this->assertEquals(['node' => ['id' => '2']], $results[1]);
+    }
 }

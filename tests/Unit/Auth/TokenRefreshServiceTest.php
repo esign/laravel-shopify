@@ -3,7 +3,6 @@
 namespace Esign\LaravelShopify\Tests\Unit\Auth;
 
 use Esign\LaravelShopify\Auth\TokenRefreshService;
-use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Tests\TestCase;
 use Illuminate\Support\Facades\Log;
 use Shopify\App\ShopifyApp;
@@ -78,7 +77,6 @@ class TokenRefreshServiceTest extends TestCase
             'access_token_expires_at' => now()->subMinute(),
             'refresh_token' => 'old_refresh_token',
             'refresh_token_expires_at' => now()->addDays(30),
-            'token_refresh_count' => 5,
         ]);
 
         // Mock the ShopifyApp response
@@ -120,7 +118,6 @@ class TokenRefreshServiceTest extends TestCase
         $shop = $shop->fresh();
         $this->assertEquals('new_access_token', $shop->access_token);
         $this->assertEquals('new_refresh_token', $shop->refresh_token);
-        $this->assertEquals(6, $shop->token_refresh_count);
         $this->assertNotNull($shop->access_token_last_refreshed_at);
     }
 

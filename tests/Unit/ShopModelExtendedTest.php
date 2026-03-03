@@ -149,7 +149,7 @@ class ShopModelExtendedTest extends TestCase
     }
 
     /** @test */
-    public function it_encrypts_refresh_token_in_database()
+    public function it_stores_refresh_token_as_plain_text()
     {
         $plainRefreshToken = 'refresh_token_plain_text_123';
 
@@ -160,11 +160,11 @@ class ShopModelExtendedTest extends TestCase
             'installed_at' => now(),
         ]);
 
-        // Token should be encrypted in database
+        // Token should be stored as plain text in database
         $raw = $this->app['db']->table('shops')->where('id', $shop->id)->first();
-        $this->assertNotEquals($plainRefreshToken, $raw->refresh_token);
+        $this->assertEquals($plainRefreshToken, $raw->refresh_token);
 
-        // But should decrypt correctly when accessed
+        // And should be accessible as expected
         $this->assertEquals($plainRefreshToken, $shop->refresh_token);
     }
 }

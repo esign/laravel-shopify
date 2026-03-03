@@ -44,7 +44,6 @@ class AppUninstalledJobTest extends TestCase
             'access_token_expires_at' => now()->addDay(),
             'refresh_token_expires_at' => now()->addDays(30),
             'access_token_last_refreshed_at' => now(),
-            'token_refresh_count' => 5,
         ]);
 
         $job = new AppUninstalledJob(
@@ -60,7 +59,6 @@ class AppUninstalledJobTest extends TestCase
         $this->assertNull($shop->refresh_token);
         $this->assertNull($shop->refresh_token_expires_at);
         $this->assertNull($shop->access_token_last_refreshed_at);
-        $this->assertEquals(0, $shop->token_refresh_count);
     }
 
     /** @test */

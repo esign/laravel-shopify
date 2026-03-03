@@ -16,14 +16,13 @@ class Shop extends Authenticatable
         'refresh_token',
         'refresh_token_expires_at',
         'access_token_last_refreshed_at',
-        'token_refresh_count',
         'installed_at',
         'uninstalled_at',
     ];
 
     protected $casts = [
-        'access_token' => 'encrypted',
-        'refresh_token' => 'encrypted',
+        'access_token_expires_at' => 'datetime',
+        'refresh_token_expires_at' => 'datetime',
         'access_token_last_refreshed_at' => 'datetime',
         'installed_at' => 'datetime',
         'uninstalled_at' => 'datetime',
@@ -110,7 +109,7 @@ class Shop extends Authenticatable
             return false; // Non-expiring refresh token
         }
 
-        return strtotime($this->refresh_token_expires_at) <= time();
+        return $this->refresh_token_expires_at->isPast();
     }
 
     /**
@@ -127,10 +126,10 @@ class Shop extends Authenticatable
             'accessMode' => 'offline',
             'shop' => $shopName,
             'token' => $this->access_token ?? '',
-            'expires' => $this->access_token_expires_at,
-            'scope' => '', // Scope is returned by Shopify but we don't need to store it
+            'expires' => $this->access_token_expires_at?->toIso8601String(),
+            'scope' => '', // Scope is returned by Shopify, not required as input
             'refreshToken' => $this->refresh_token ?? '',
-            'refreshTokenExpires' => $this->refresh_token_expires_at,
+            'refreshTokenExpires' => $this->refresh_token_expires_at?->toIso8601String(),
             'user' => null, // Offline tokens don't have user
         ];
     }

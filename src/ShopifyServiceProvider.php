@@ -73,6 +73,7 @@ class ShopifyServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 Console\MakeWebhookCommand::class,
+                Console\DecryptTokensCommand::class,
             ]);
         }
     }
