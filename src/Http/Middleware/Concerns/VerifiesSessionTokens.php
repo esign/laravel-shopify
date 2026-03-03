@@ -60,7 +60,7 @@ trait VerifiesSessionTokens
         }
 
         $parsedUrl = parse_url($idToken->claims['dest']);
-        $shopDomain = $parsedUrl['path'] ?? null;
+        $shopDomain = $parsedUrl['path'] ?? $parsedUrl['host'] ?? null;
 
         if (! $shopDomain) {
             throw new ShopifyAuthenticationException(
