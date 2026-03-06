@@ -3,6 +3,8 @@
 namespace Esign\LaravelShopify\Http\Middleware\Concerns;
 
 use Esign\LaravelShopify\Auth\SessionTokenHandler;
+use Esign\LaravelShopify\Events\AppInstalledEvent;
+use Esign\LaravelShopify\Events\AppReinstalledEvent;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
 use Illuminate\Http\Request;
@@ -86,7 +88,10 @@ trait VerifiesSessionTokens
             $shop->markAsReinstalled(null); // Access token will be set after token exchange
             Log::info('Shop reinstalled', ['shop' => $shopDomain]);
 
-            return $shop->fresh();
+            $restoredShop = $shop->fresh();
+            AppReinstalledEvent::dispatch($restoredShop);
+
+            return $restoredShop;
         }
 
         if (! $shop) {
@@ -97,6 +102,7 @@ trait VerifiesSessionTokens
             ]);
 
             Log::info('New shop created', ['shop' => $shopDomain]);
+            AppInstalledEvent::dispatch($shop);
         }
 
         return $shop;
