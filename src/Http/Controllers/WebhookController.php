@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Http\Controllers;
 
+use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Webhooks\WebhookDispatcher;
 use Illuminate\Http\Request;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class WebhookController
 {
+    use ChecksLoggingConfig;
+
     public function __construct(
         protected WebhookDispatcher $dispatcher,
     ) {}
@@ -31,10 +34,12 @@ class WebhookController
             ->first();
 
         if (! $shopModel) {
-            Log::warning('Webhook received for unknown shop', [
-                'topic' => $topic,
-                'shop' => $shop,
-            ]);
+            if ($this->shouldLog('log_webhooks')) {
+                Log::warning('Webhook received for unknown shop', [
+                    'topic' => $topic,
+                    'shop' => $shop,
+                ]);
+            }
 
             return response()->json(['status' => 'ignored'], 200);
         }

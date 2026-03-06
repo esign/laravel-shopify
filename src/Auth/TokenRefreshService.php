@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Auth;
 
+use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Illuminate\Support\Facades\Log;
 use Shopify\App\ShopifyApp;
@@ -13,6 +14,8 @@ use Shopify\App\ShopifyApp;
  */
 class TokenRefreshService
 {
+    use ChecksLoggingConfig;
+
     protected ShopifyApp $shopifyApp;
 
     public function __construct()
@@ -39,28 +42,34 @@ class TokenRefreshService
         try {
             // Validate shop has necessary data
             if (! $shop->refresh_token) {
-                Log::error('Cannot refresh token: no refresh token', [
-                    'shop' => $shop->domain,
-                ]);
+                if ($this->shouldLog('log_token_lifecycle')) {
+                    Log::error('Cannot refresh token: no refresh token', [
+                        'shop' => $shop->domain,
+                    ]);
+                }
 
                 return false;
             }
 
             // Check if refresh token is expired (pre-validation)
             if ($shop->isRefreshTokenExpired()) {
-                Log::warning('Refresh token expired, clearing tokens', [
-                    'shop' => $shop->domain,
-                    'refresh_token_expires_at' => $shop->refresh_token_expires_at,
-                ]);
+                if ($this->shouldLog('log_token_lifecycle')) {
+                    Log::warning('Refresh token expired, clearing tokens', [
+                        'shop' => $shop->domain,
+                        'refresh_token_expires_at' => $shop->refresh_token_expires_at,
+                    ]);
+                }
                 $this->clearTokens($shop);
 
                 return false;
             }
 
-            Log::info('Attempting token refresh', [
-                'shop' => $shop->domain,
-                'access_token_expires_at' => $shop->access_token_expires_at,
-            ]);
+            if ($this->shouldLog('log_token_lifecycle')) {
+                Log::info('Attempting token refresh', [
+                    'shop' => $shop->domain,
+                    'access_token_expires_at' => $shop->access_token_expires_at,
+                ]);
+            }
 
             // Build TokenExchangeAccessToken array for library
             $accessTokenData = $shop->getTokenExchangeAccessTokenArray();
@@ -73,17 +82,21 @@ class TokenRefreshService
 
             // Check result
             if (! $result->ok) {
-                Log::error('Token refresh failed', [
-                    'shop' => $shop->domain,
-                    'error_code' => $result->log->code,
-                    'error_detail' => $result->log->detail,
-                ]);
+                if ($this->shouldLog('log_token_lifecycle')) {
+                    Log::error('Token refresh failed', [
+                        'shop' => $shop->domain,
+                        'error_code' => $result->log->code,
+                        'error_detail' => $result->log->detail,
+                    ]);
+                }
 
                 // If refresh token is invalid/expired, clear tokens
                 if (in_array($result->log->code, ['invalid_grant', 'refresh_token_expired'])) {
-                    Log::warning('Refresh token invalid, clearing all tokens', [
-                        'shop' => $shop->domain,
-                    ]);
+                    if ($this->shouldLog('log_token_lifecycle')) {
+                        Log::warning('Refresh token invalid, clearing all tokens', [
+                            'shop' => $shop->domain,
+                        ]);
+                    }
                     $this->clearTokens($shop);
                 }
 
@@ -92,9 +105,11 @@ class TokenRefreshService
 
             // Check if library says token is still valid (no refresh needed)
             if ($result->log->code === 'token_still_valid') {
-                Log::info('Token still valid, no refresh needed', [
-                    'shop' => $shop->domain,
-                ]);
+                if ($this->shouldLog('log_token_lifecycle')) {
+                    Log::info('Token still valid, no refresh needed', [
+                        'shop' => $shop->domain,
+                    ]);
+                }
 
                 return true;
             }
@@ -111,19 +126,23 @@ class TokenRefreshService
                 'access_token_last_refreshed_at' => now(),
             ]);
 
-            Log::info('Token refresh successful', [
-                'shop' => $shop->domain,
-                'new_expires_at' => $newAccessToken->expires,
-            ]);
+            if ($this->shouldLog('log_token_lifecycle')) {
+                Log::info('Token refresh successful', [
+                    'shop' => $shop->domain,
+                    'new_expires_at' => $newAccessToken->expires,
+                ]);
+            }
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Token refresh exception', [
-                'shop' => $shop->domain,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            if ($this->shouldLog('log_token_lifecycle')) {
+                Log::error('Token refresh exception', [
+                    'shop' => $shop->domain,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
 
             return false;
         }
@@ -137,7 +156,9 @@ class TokenRefreshService
      */
     public function clearTokens(Shop $shop): void
     {
-        Log::info('Clearing tokens', ['shop' => $shop->domain]);
+        if ($this->shouldLog('log_token_lifecycle')) {
+            Log::info('Clearing tokens', ['shop' => $shop->domain]);
+        }
 
         $shop->update([
             'access_token' => null,

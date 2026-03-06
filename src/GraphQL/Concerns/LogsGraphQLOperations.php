@@ -12,8 +12,8 @@ trait LogsGraphQLOperations
             return;
         }
 
-        $shouldLog = ($type === 'query' && config('shopify.logging.log_queries'))
-            || ($type === 'mutation' && config('shopify.logging.log_mutations'));
+        $shouldLog = ($type === 'query' && config('shopify.logging.log_graphql_queries'))
+            || ($type === 'mutation' && config('shopify.logging.log_graphql_mutations'));
 
         if ($shouldLog) {
             Log::channel(config('shopify.logging.channel'))->info("GraphQL {$type} executed", [
