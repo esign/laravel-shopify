@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
+use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class CustomersDataRequestJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use ChecksLoggingConfig, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Create a new job instance.
@@ -39,21 +40,25 @@ class CustomersDataRequestJob implements ShouldQueue
         $customerId = $this->webhookData['customer']['id'] ?? null;
         $customerEmail = $this->webhookData['customer']['email'] ?? null;
 
-        Log::info('GDPR: Customer data request received', [
-            'shop' => $this->shopDomain,
-            'customer_id' => $customerId,
-            'customer_email' => $customerEmail,
-            'webhook_topic' => 'customers/data_request',
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: Customer data request received', [
+                'shop' => $this->shopDomain,
+                'customer_id' => $customerId,
+                'customer_email' => $customerEmail,
+                'webhook_topic' => 'customers/data_request',
+            ]);
+        }
 
         // Find the shop
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            Log::warning('GDPR: Shop not found for customer data request', [
-                'shop' => $this->shopDomain,
-                'customer_id' => $customerId,
-            ]);
+            if ($this->shouldLog('log_gdpr_events')) {
+                Log::warning('GDPR: Shop not found for customer data request', [
+                    'shop' => $this->shopDomain,
+                    'customer_id' => $customerId,
+                ]);
+            }
 
             return;
         }
@@ -63,10 +68,12 @@ class CustomersDataRequestJob implements ShouldQueue
         // $customerData = $this->collectCustomerData($shop, $customerId);
         // $this->sendDataToCustomer($customerEmail, $customerData);
 
-        Log::info('GDPR: Customer data request processed', [
-            'shop' => $this->shopDomain,
-            'customer_id' => $customerId,
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: Customer data request processed', [
+                'shop' => $this->shopDomain,
+                'customer_id' => $customerId,
+            ]);
+        }
 
         // IMPORTANT: You have 30 days to fulfill this request
         // Consider storing a record of the request and its fulfillment status
@@ -107,9 +114,11 @@ class CustomersDataRequestJob implements ShouldQueue
 
         // Mail::to($email)->send(new CustomerDataExport($data));
 
-        Log::info('GDPR: Customer data sent', [
-            'email' => $email,
-            'data_size' => count($data),
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: Customer data sent', [
+                'email' => $email,
+                'data_size' => count($data),
+            ]);
+        }
     }
 }

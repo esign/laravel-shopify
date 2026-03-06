@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
+use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class ShopRedactJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use ChecksLoggingConfig, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Create a new job instance.
@@ -40,11 +41,13 @@ class ShopRedactJob implements ShouldQueue
     {
         $shopId = $this->webhookData['shop_id'] ?? null;
 
-        Log::info('GDPR: Shop redaction request received', [
-            'shop' => $this->shopDomain,
-            'shop_id' => $shopId,
-            'webhook_topic' => 'shop/redact',
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: Shop redaction request received', [
+                'shop' => $this->shopDomain,
+                'shop_id' => $shopId,
+                'webhook_topic' => 'shop/redact',
+            ]);
+        }
 
         // Find the shop (including soft-deleted)
         $shop = Shop::withTrashed()
@@ -52,20 +55,24 @@ class ShopRedactJob implements ShouldQueue
             ->first();
 
         if (! $shop) {
-            Log::warning('GDPR: Shop not found for redaction', [
-                'shop' => $this->shopDomain,
-                'shop_id' => $shopId,
-            ]);
+            if ($this->shouldLog('log_gdpr_events')) {
+                Log::warning('GDPR: Shop not found for redaction', [
+                    'shop' => $this->shopDomain,
+                    'shop_id' => $shopId,
+                ]);
+            }
 
             return;
         }
 
         // Check if shop was uninstalled at least 48 hours ago
         if ($shop->deleted_at && $shop->deleted_at->addHours(48)->isFuture()) {
-            Log::warning('GDPR: Shop redaction requested before 48-hour minimum retention', [
-                'shop' => $this->shopDomain,
-                'uninstalled_at' => $shop->deleted_at,
-            ]);
+            if ($this->shouldLog('log_gdpr_events')) {
+                Log::warning('GDPR: Shop redaction requested before 48-hour minimum retention', [
+                    'shop' => $this->shopDomain,
+                    'uninstalled_at' => $shop->deleted_at,
+                ]);
+            }
             // Still process the redaction as Shopify is requesting it
         }
 
@@ -81,10 +88,12 @@ class ShopRedactJob implements ShouldQueue
             $shop->forceDelete(); // Then force delete
         }
 
-        Log::info('GDPR: Shop data permanently deleted', [
-            'shop' => $this->shopDomain,
-            'shop_id' => $shopId,
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: Shop data permanently deleted', [
+                'shop' => $this->shopDomain,
+                'shop_id' => $shopId,
+            ]);
+        }
     }
 
     /**
@@ -118,10 +127,12 @@ class ShopRedactJob implements ShouldQueue
         // 7. Delete uploaded files/media
         // Storage::deleteDirectory("shops/{$shop->id}");
 
-        Log::info('GDPR: All shop-related data deleted', [
-            'shop' => $shop->domain,
-            'shop_id' => $shop->id,
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: All shop-related data deleted', [
+                'shop' => $shop->domain,
+                'shop_id' => $shop->id,
+            ]);
+        }
     }
 
     /**
@@ -139,8 +150,10 @@ class ShopRedactJob implements ShouldQueue
         //
         // Storage::put("archives/shop_{$archive['shop_id_hash']}.json", json_encode($archive));
 
-        Log::info('GDPR: Shop data archived', [
-            'shop' => $shop->domain,
-        ]);
+        if ($this->shouldLog('log_gdpr_events')) {
+            Log::info('GDPR: Shop data archived', [
+                'shop' => $shop->domain,
+            ]);
+        }
     }
 }

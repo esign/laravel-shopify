@@ -3,6 +3,7 @@
 namespace Esign\LaravelShopify\GraphQL;
 
 use Esign\LaravelShopify\Auth\TokenRefreshService;
+use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Exceptions\TokenRefreshRequiredException;
 use Esign\LaravelShopify\GraphQL\Concerns\HandlesGraphQLErrors;
 use Esign\LaravelShopify\GraphQL\Concerns\LogsGraphQLOperations;
@@ -16,7 +17,7 @@ use Shopify\App\Types\GQLResult;
 
 class Client
 {
-    use HandlesGraphQLErrors, LogsGraphQLOperations;
+    use ChecksLoggingConfig, HandlesGraphQLErrors, LogsGraphQLOperations;
 
     protected ShopifyApp $shopifyApp;
 
@@ -86,16 +87,20 @@ class Client
 
         // Check for authentication errors (retriable)
         if (! $result->ok && $this->isAuthenticationError($result)) {
-            Log::info('GraphQL authentication error detected, attempting token refresh', [
-                'shop' => $this->shop->domain,
-                'error_code' => $result->log->code,
-                'error_detail' => $result->log->detail,
-            ]);
+            if ($this->shouldLog('log_token_lifecycle')) {
+                Log::info('GraphQL authentication error detected, attempting token refresh', [
+                    'shop' => $this->shop->domain,
+                    'error_code' => $result->log->code,
+                    'error_detail' => $result->log->detail,
+                ]);
+            }
 
             if ($this->attemptTokenRefresh()) {
-                Log::info('Token refresh successful, retrying GraphQL request', [
-                    'shop' => $this->shop->domain,
-                ]);
+                if ($this->shouldLog('log_token_lifecycle')) {
+                    Log::info('Token refresh successful, retrying GraphQL request', [
+                        'shop' => $this->shop->domain,
+                    ]);
+                }
 
                 // Retry the request with refreshed token
                 $result = $this->makeGraphQLRequest($query, $variables);
@@ -153,10 +158,12 @@ class Client
 
             return false;
         } catch (\Exception $e) {
-            Log::error('Token refresh attempt failed', [
-                'shop' => $this->shop->domain,
-                'error' => $e->getMessage(),
-            ]);
+            if ($this->shouldLog('log_token_lifecycle')) {
+                Log::error('Token refresh attempt failed', [
+                    'shop' => $this->shop->domain,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             return false;
         }

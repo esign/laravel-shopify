@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Log;
  */
 trait VerifiesSessionTokens
 {
+    use ChecksLoggingConfig;
+
     /**
      * Build request array for Shopify library from Laravel request.
      */
@@ -84,7 +86,10 @@ trait VerifiesSessionTokens
         if ($shop && $shop->trashed()) {
             // Shop was previously uninstalled, restore it
             $shop->markAsReinstalled(null); // Access token will be set after token exchange
-            Log::info('Shop reinstalled', ['shop' => $shopDomain]);
+
+            if ($this->shouldLog('log_shop_lifecycle')) {
+                Log::info('Shop reinstalled', ['shop' => $shopDomain]);
+            }
 
             return $shop->fresh();
         }
@@ -96,7 +101,9 @@ trait VerifiesSessionTokens
                 'installed_at' => now(),
             ]);
 
-            Log::info('New shop created', ['shop' => $shopDomain]);
+            if ($this->shouldLog('log_shop_lifecycle')) {
+                Log::info('New shop created', ['shop' => $shopDomain]);
+            }
         }
 
         return $shop;
@@ -163,12 +170,14 @@ trait VerifiesSessionTokens
             $accessToken = $tokenResult->accessToken;
 
             // Log token details for debugging
-            Log::info('Access token obtained for shop', [
-                'shop' => $shop->domain,
-                'expires' => $accessToken->expires ?? 'never',
-                'has_refresh_token' => ! empty($accessToken->refreshToken),
-                'refresh_token_expires' => $accessToken->refreshTokenExpires ?? 'never',
-            ]);
+            if ($this->shouldLog('log_shop_lifecycle')) {
+                Log::info('Access token obtained for shop', [
+                    'shop' => $shop->domain,
+                    'expires' => $accessToken->expires ?? 'never',
+                    'has_refresh_token' => ! empty($accessToken->refreshToken),
+                    'refresh_token_expires' => $accessToken->refreshTokenExpires ?? 'never',
+                ]);
+            }
 
             $shop->update([
                 'access_token' => $accessToken->token,

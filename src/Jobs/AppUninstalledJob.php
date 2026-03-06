@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
+use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class AppUninstalledJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use ChecksLoggingConfig, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Create a new job instance.
@@ -30,10 +31,12 @@ class AppUninstalledJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('App uninstalled webhook received', [
-            'shop' => $this->shopDomain,
-            'webhook_topic' => 'app/uninstalled',
-        ]);
+        if ($this->shouldLog('log_shop_lifecycle')) {
+            Log::info('App uninstalled webhook received', [
+                'shop' => $this->shopDomain,
+                'webhook_topic' => 'app/uninstalled',
+            ]);
+        }
 
         // Find the shop (include soft-deleted in case of duplicate webhooks)
         $shop = Shop::withTrashed()
@@ -41,18 +44,22 @@ class AppUninstalledJob implements ShouldQueue
             ->first();
 
         if (! $shop) {
-            Log::warning('Shop not found for uninstall webhook', [
-                'shop' => $this->shopDomain,
-            ]);
+            if ($this->shouldLog('log_shop_lifecycle')) {
+                Log::warning('Shop not found for uninstall webhook', [
+                    'shop' => $this->shopDomain,
+                ]);
+            }
 
             return;
         }
 
         // If already soft-deleted, nothing to do
         if ($shop->trashed()) {
-            Log::info('Shop already marked as uninstalled', [
-                'shop' => $this->shopDomain,
-            ]);
+            if ($this->shouldLog('log_shop_lifecycle')) {
+                Log::info('Shop already marked as uninstalled', [
+                    'shop' => $this->shopDomain,
+                ]);
+            }
 
             return;
         }
@@ -67,17 +74,21 @@ class AppUninstalledJob implements ShouldQueue
             'access_token_last_refreshed_at' => null,
         ]);
 
-        Log::info('Shop tokens cleared', [
-            'shop' => $this->shopDomain,
-        ]);
+        if ($this->shouldLog('log_shop_lifecycle')) {
+            Log::info('Shop tokens cleared', [
+                'shop' => $this->shopDomain,
+            ]);
+        }
 
         // Soft delete the shop (marks as uninstalled)
         $shop->delete();
 
-        Log::info('Shop marked as uninstalled (soft deleted)', [
-            'shop' => $this->shopDomain,
-            'uninstalled_at' => $shop->deleted_at,
-        ]);
+        if ($this->shouldLog('log_shop_lifecycle')) {
+            Log::info('Shop marked as uninstalled (soft deleted)', [
+                'shop' => $this->shopDomain,
+                'uninstalled_at' => $shop->deleted_at,
+            ]);
+        }
 
         // Optional: Trigger additional cleanup logic
         // $this->cleanupShopResources($shop);
