@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
+use Esign\LaravelShopify\Events\AppUninstalledEvent;
 use Esign\LaravelShopify\Models\Shop;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -73,6 +74,8 @@ class AppUninstalledJob implements ShouldQueue
 
         // Soft delete the shop (marks as uninstalled)
         $shop->delete();
+
+        AppUninstalledEvent::dispatch($shop);
 
         Log::info('Shop marked as uninstalled (soft deleted)', [
             'shop' => $this->shopDomain,
