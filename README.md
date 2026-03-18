@@ -1,5 +1,7 @@
 # Laravel Shopify
 
+[![run-tests](https://github.com/esign/laravel-shopify/actions/workflows/run-tests.yml/badge.svg)](https://github.com/esign/laravel-shopify/actions/workflows/run-tests.yml)
+
 A modern Laravel package for building **embedded Shopify apps** using **session tokens** and **Shopify Managed Installation**. Built on top of the official `shopify/shopify-app-php` library.
 
 ## Features
