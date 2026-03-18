@@ -108,7 +108,6 @@ class TokenRefreshServiceTest extends TestCase
         // Inject mock using reflection
         $reflection = new \ReflectionClass($this->service);
         $property = $reflection->getProperty('shopifyApp');
-        $property->setAccessible(true);
         $property->setValue($this->service, $mockShopifyApp);
 
         $result = $this->service->refreshAccessToken($shop);
@@ -150,7 +149,6 @@ class TokenRefreshServiceTest extends TestCase
 
         $reflection = new \ReflectionClass($this->service);
         $property = $reflection->getProperty('shopifyApp');
-        $property->setAccessible(true);
         $property->setValue($this->service, $mockShopifyApp);
 
         $result = $this->service->refreshAccessToken($shop);
@@ -191,7 +189,6 @@ class TokenRefreshServiceTest extends TestCase
 
         $reflection = new \ReflectionClass($this->service);
         $property = $reflection->getProperty('shopifyApp');
-        $property->setAccessible(true);
         $property->setValue($this->service, $mockShopifyApp);
 
         $result = $this->service->refreshAccessToken($shop);
@@ -224,7 +221,6 @@ class TokenRefreshServiceTest extends TestCase
 
         $reflection = new \ReflectionClass($this->service);
         $property = $reflection->getProperty('shopifyApp');
-        $property->setAccessible(true);
         $property->setValue($this->service, $mockShopifyApp);
 
         $result = $this->service->refreshAccessToken($shop);
