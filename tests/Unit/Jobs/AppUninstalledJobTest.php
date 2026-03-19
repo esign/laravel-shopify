@@ -154,7 +154,7 @@ class AppUninstalledJobTest extends TestCase
             'domain' => 'test-shop.myshopify.com',
         ]);
 
-        $shopId = $shop->id;
+        $shopId = $shop->getKey();
         $originalDomain = $shop->domain;
 
         $job = new AppUninstalledJob(

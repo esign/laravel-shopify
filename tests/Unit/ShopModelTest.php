@@ -10,16 +10,14 @@ class ShopModelTest extends TestCase
     /** @test */
     public function it_creates_a_shop_with_required_attributes()
     {
-        $shop = Shop::create([
-            'domain' => 'test-shop.myshopify.com',
-            'access_token' => 'shpat_test_token',
-            'installed_at' => now(),
-        ]);
+        $shop = Shop::factory()->create();
 
         $this->assertDatabaseHas('shops', [
-            'domain' => 'test-shop.myshopify.com',
+            'id' => $shop->getKey(),
         ]);
 
+        $this->assertNotNull($shop->domain);
+        $this->assertNotNull($shop->access_token);
         $this->assertNotNull($shop->installed_at);
     }
 
@@ -28,14 +26,12 @@ class ShopModelTest extends TestCase
     {
         $plainToken = 'shpat_test_token_123';
 
-        $shop = Shop::create([
-            'domain' => 'test-shop.myshopify.com',
+        $shop = Shop::factory()->create([
             'access_token' => $plainToken,
-            'installed_at' => now(),
         ]);
 
         // Token should be stored as plain text in database
-        $raw = $this->app['db']->table('shops')->where('id', $shop->id)->first();
+        $raw = $this->app['db']->table('shops')->where('id', $shop->getKey())->first();
         $this->assertEquals($plainToken, $raw->access_token);
 
         // And should be accessible as expected
@@ -49,7 +45,7 @@ class ShopModelTest extends TestCase
 
         $shop->markAsUninstalled();
 
-        $this->assertSoftDeleted('shops', ['id' => $shop->id]);
+        $this->assertSoftDeleted('shops', ['id' => $shop->getKey()]);
         $this->assertNotNull($shop->fresh()?->uninstalled_at);
     }
 

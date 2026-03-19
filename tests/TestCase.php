@@ -48,11 +48,7 @@ abstract class TestCase extends Orchestra
      */
     protected function createShop(array $attributes = []): \Esign\LaravelShopify\Models\Shop
     {
-        return \Esign\LaravelShopify\Models\Shop::create(array_merge([
-            'domain' => 'test-shop.myshopify.com',
-            'access_token' => 'shpat_test_token_'.bin2hex(random_bytes(16)),
-            'installed_at' => now(),
-        ], $attributes));
+        return \Esign\LaravelShopify\Models\Shop::factory()->create($attributes);
     }
 
     /**

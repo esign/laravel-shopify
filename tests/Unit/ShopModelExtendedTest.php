@@ -11,7 +11,6 @@ class ShopModelExtendedTest extends TestCase
     public function it_checks_if_refresh_token_is_expired()
     {
         $shop = $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'refresh_token' => 'token',
             'refresh_token_expires_at' => now()->subDay(), // Expired
         ]);
@@ -23,7 +22,6 @@ class ShopModelExtendedTest extends TestCase
     public function it_returns_false_for_non_expired_refresh_token()
     {
         $shop = $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'refresh_token' => 'token',
             'refresh_token_expires_at' => now()->addDays(30), // Not expired
         ]);
@@ -35,7 +33,6 @@ class ShopModelExtendedTest extends TestCase
     public function it_treats_null_refresh_token_expires_at_as_non_expiring()
     {
         $shop = $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'refresh_token' => 'token',
             'refresh_token_expires_at' => null, // Non-expiring
         ]);
@@ -82,7 +79,6 @@ class ShopModelExtendedTest extends TestCase
     public function it_handles_null_tokens_in_token_array()
     {
         $shop = $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'access_token' => null,
             'refresh_token' => null,
         ]);
@@ -120,7 +116,7 @@ class ShopModelExtendedTest extends TestCase
     /** @test */
     public function it_marks_shop_as_reinstalled_without_token()
     {
-        $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
+        $shop = $this->createShop();
         $shop->delete(); // Soft delete
 
         $this->assertTrue($shop->trashed());
@@ -136,7 +132,6 @@ class ShopModelExtendedTest extends TestCase
     public function it_marks_shop_as_reinstalled_with_new_token()
     {
         $shop = $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'access_token' => 'old_token',
         ]);
         $shop->delete();
@@ -153,15 +148,13 @@ class ShopModelExtendedTest extends TestCase
     {
         $plainRefreshToken = 'refresh_token_plain_text_123';
 
-        $shop = Shop::create([
-            'domain' => 'test-shop.myshopify.com',
+        $shop = Shop::factory()->create([
             'access_token' => 'shpat_test',
             'refresh_token' => $plainRefreshToken,
-            'installed_at' => now(),
         ]);
 
         // Token should be stored as plain text in database
-        $raw = $this->app['db']->table('shops')->where('id', $shop->id)->first();
+        $raw = $this->app['db']->table('shops')->where('id', $shop->getKey())->first();
         $this->assertEquals($plainRefreshToken, $raw->refresh_token);
 
         // And should be accessible as expected
