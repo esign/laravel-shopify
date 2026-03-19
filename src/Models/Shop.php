@@ -138,5 +138,4 @@ class Shop extends Authenticatable
             'user' => null, // Offline tokens don't have user
         ];
     }
-
 }
