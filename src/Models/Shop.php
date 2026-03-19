@@ -2,7 +2,6 @@
 
 namespace Esign\LaravelShopify\Models;
 
-use Esign\LaravelShopify\Database\Factories\ShopFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -137,8 +136,4 @@ class Shop extends Authenticatable
         ];
     }
 
-    protected static function newFactory(): ShopFactory
-    {
-        return ShopFactory::new();
-    }
 }
