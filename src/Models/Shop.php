@@ -2,11 +2,14 @@
 
 namespace Esign\LaravelShopify\Models;
 
+use Esign\LaravelShopify\Database\Factories\ShopFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class Shop extends Authenticatable
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
@@ -132,5 +135,10 @@ class Shop extends Authenticatable
             'refreshTokenExpires' => $this->refresh_token_expires_at?->toIso8601String(),
             'user' => null, // Offline tokens don't have user
         ];
+    }
+
+    protected static function newFactory(): ShopFactory
+    {
+        return ShopFactory::new();
     }
 }
