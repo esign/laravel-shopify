@@ -86,7 +86,7 @@ class ShopSoftDeleteTest extends TestCase
     public function it_permanently_deletes_shop_with_force_delete()
     {
         $shop = $this->createShop(['domain' => 'test.myshopify.com']);
-        $shopId = $shop->id;
+        $shopId = $shop->getKey();
 
         $shop->markAsUninstalled();
         $shop->forceDelete();

@@ -15,15 +15,13 @@ class DecryptTokensCommandTest extends TestCase
         $plainAccessToken = 'shpat_test_token_123';
         $plainRefreshToken = 'refresh_token_456';
 
-        $shop = Shop::create([
-            'domain' => 'test-shop.myshopify.com',
+        $shop = Shop::factory()->create([
             'access_token' => encrypt($plainAccessToken),
             'refresh_token' => encrypt($plainRefreshToken),
-            'installed_at' => now(),
         ]);
 
         // Verify tokens are encrypted in database
-        $rawShop = DB::table('shops')->where('id', $shop->id)->first();
+        $rawShop = DB::table('shops')->where('id', $shop->getKey())->first();
         $this->assertNotEquals($plainAccessToken, $rawShop->access_token);
         $this->assertNotEquals($plainRefreshToken, $rawShop->refresh_token);
 
@@ -32,7 +30,7 @@ class DecryptTokensCommandTest extends TestCase
             ->assertSuccessful();
 
         // Verify tokens are now plain text in database
-        $rawShop = DB::table('shops')->where('id', $shop->id)->first();
+        $rawShop = DB::table('shops')->where('id', $shop->getKey())->first();
         $this->assertEquals($plainAccessToken, $rawShop->access_token);
         $this->assertEquals($plainRefreshToken, $rawShop->refresh_token);
     }
@@ -42,7 +40,6 @@ class DecryptTokensCommandTest extends TestCase
     {
         // Create a shop with plain text tokens
         $shop = $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'access_token' => 'shpat_plain_token',
             'refresh_token' => 'refresh_plain_token',
         ]);
@@ -51,7 +48,7 @@ class DecryptTokensCommandTest extends TestCase
             ->assertSuccessful();
 
         // Verify tokens remain unchanged
-        $rawShop = DB::table('shops')->where('id', $shop->id)->first();
+        $rawShop = DB::table('shops')->where('id', $shop->getKey())->first();
         $this->assertEquals('shpat_plain_token', $rawShop->access_token);
         $this->assertEquals('refresh_plain_token', $rawShop->refresh_token);
     }
@@ -61,7 +58,6 @@ class DecryptTokensCommandTest extends TestCase
     {
         // Create a shop with null tokens
         $this->createShop([
-            'domain' => 'test-shop.myshopify.com',
             'access_token' => null,
             'refresh_token' => null,
         ]);
@@ -74,10 +70,8 @@ class DecryptTokensCommandTest extends TestCase
     public function it_requires_confirmation_without_force_flag()
     {
         // Create a shop with encrypted token
-        Shop::create([
-            'domain' => 'test-shop.myshopify.com',
+        Shop::factory()->create([
             'access_token' => encrypt('shpat_token'),
-            'installed_at' => now(),
         ]);
 
         // Without force flag, should ask for confirmation
@@ -93,10 +87,8 @@ class DecryptTokensCommandTest extends TestCase
         $plainToken = 'shpat_test_token';
         $encryptedToken = encrypt($plainToken);
 
-        $shop = Shop::create([
-            'domain' => 'test-shop.myshopify.com',
+        $shop = Shop::factory()->create([
             'access_token' => $encryptedToken,
-            'installed_at' => now(),
         ]);
 
         // Run in dry-run mode
@@ -104,7 +96,7 @@ class DecryptTokensCommandTest extends TestCase
             ->assertSuccessful();
 
         // Verify token is still encrypted
-        $rawShop = DB::table('shops')->where('id', $shop->id)->first();
+        $rawShop = DB::table('shops')->where('id', $shop->getKey())->first();
         $this->assertEquals($encryptedToken, $rawShop->access_token);
     }
 
@@ -160,16 +152,12 @@ class DecryptTokensCommandTest extends TestCase
     public function it_provides_accurate_summary_statistics()
     {
         // Create mix of encrypted and plain text tokens
-        Shop::create([
-            'domain' => 'encrypted-shop.myshopify.com',
+        Shop::factory()->create([
             'access_token' => encrypt('shpat_encrypted'),
-            'installed_at' => now(),
         ]);
 
-        Shop::create([
-            'domain' => 'plain-shop.myshopify.com',
+        Shop::factory()->create([
             'access_token' => 'shpat_plain',
-            'installed_at' => now(),
         ]);
 
         $this->artisan('shopify:decrypt-tokens', ['--force' => true])
@@ -184,10 +172,8 @@ class DecryptTokensCommandTest extends TestCase
     {
         // Create multiple shops with encrypted tokens
         for ($i = 1; $i <= 5; $i++) {
-            Shop::create([
-                'domain' => "shop{$i}.myshopify.com",
+            Shop::factory()->create([
                 'access_token' => encrypt("shpat_token_{$i}"),
-                'installed_at' => now(),
             ]);
         }
 
@@ -207,10 +193,8 @@ class DecryptTokensCommandTest extends TestCase
         // Create a shop with Laravel-encrypted token
         $encryptedToken = encrypt('shpat_test');
 
-        Shop::create([
-            'domain' => 'test-shop.myshopify.com',
+        Shop::factory()->create([
             'access_token' => $encryptedToken,
-            'installed_at' => now(),
         ]);
 
         $this->artisan('shopify:decrypt-tokens', ['--dry-run' => true])

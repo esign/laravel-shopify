@@ -2,11 +2,16 @@
 
 namespace Esign\LaravelShopify\Models;
 
+use Esign\LaravelShopify\Database\Factories\ShopFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
+#[UseFactory(ShopFactory::class)]
 class Shop extends Authenticatable
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [

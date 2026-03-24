@@ -55,7 +55,7 @@ class WebhookDispatchTest extends TestCase
         $shop = $this->createShop();
         $this->assertTrue($shop->isInstalled());
 
-        $payload = json_encode(['id' => $shop->id]);
+        $payload = json_encode(['id' => $shop->getKey()]);
 
         config(['shopify.webhooks.routes' => [
             'app/uninstalled' => [

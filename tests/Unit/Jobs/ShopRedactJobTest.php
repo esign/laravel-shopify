@@ -22,7 +22,7 @@ class ShopRedactJobTest extends TestCase
         $shop->deleted_at = now()->subHours(50);
         $shop->save();
 
-        $shopId = $shop->id;
+        $shopId = $shop->getKey();
 
         $job = new ShopRedactJob(
             shopDomain: 'test-shop.myshopify.com',
@@ -47,7 +47,7 @@ class ShopRedactJobTest extends TestCase
         Log::shouldReceive('info')->twice();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
-        $shopId = $shop->id;
+        $shopId = $shop->getKey();
 
         $this->assertFalse($shop->trashed());
 
