@@ -2,7 +2,6 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
-use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
@@ -13,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 
 class CustomersRedactJob implements ShouldQueue
 {
-    use ChecksLoggingConfig, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Create a new job instance.
@@ -43,26 +42,22 @@ class CustomersRedactJob implements ShouldQueue
         $customerEmail = $this->webhookData['customer']['email'] ?? null;
         $ordersToRedact = $this->webhookData['orders_to_redact'] ?? [];
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer redaction request received', [
-                'shop' => $this->shopDomain,
-                'customer_id' => $customerId,
-                'customer_email' => $customerEmail,
-                'orders_count' => count($ordersToRedact),
-                'webhook_topic' => 'customers/redact',
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer redaction request received', [
+            'shop' => $this->shopDomain,
+            'customer_id' => $customerId,
+            'customer_email' => $customerEmail,
+            'orders_count' => count($ordersToRedact),
+            'webhook_topic' => 'customers/redact',
+        ]);
 
         // Find the shop
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            if ($this->shouldLog('log_gdpr_events')) {
-                ShopifyLogger::channel()->warning('GDPR: Shop not found for customer redaction', [
-                    'shop' => $this->shopDomain,
-                    'customer_id' => $customerId,
-                ]);
-            }
+            ShopifyLogger::log('log_gdpr_events')->warning('GDPR: Shop not found for customer redaction', [
+                'shop' => $this->shopDomain,
+                'customer_id' => $customerId,
+            ]);
 
             return;
         }
@@ -72,12 +67,10 @@ class CustomersRedactJob implements ShouldQueue
         // $this->redactCustomerData($shop, $customerId);
         // $this->anonymizeCustomerOrders($shop, $ordersToRedact);
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer data redacted', [
-                'shop' => $this->shopDomain,
-                'customer_id' => $customerId,
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data redacted', [
+            'shop' => $this->shopDomain,
+            'customer_id' => $customerId,
+        ]);
     }
 
     /**
@@ -99,12 +92,10 @@ class CustomersRedactJob implements ShouldQueue
         //     ->where('customer_id', $customerId)
         //     ->delete();
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer personal data deleted', [
-                'shop' => $shop->domain,
-                'customer_id' => $customerId,
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer personal data deleted', [
+            'shop' => $shop->domain,
+            'customer_id' => $customerId,
+        ]);
     }
 
     /**
@@ -130,11 +121,9 @@ class CustomersRedactJob implements ShouldQueue
         //         ]);
         // }
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer orders anonymized', [
-                'shop' => $shop->domain,
-                'orders_count' => count($orderIds),
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer orders anonymized', [
+            'shop' => $shop->domain,
+            'orders_count' => count($orderIds),
+        ]);
     }
 }

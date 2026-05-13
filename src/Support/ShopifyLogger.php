@@ -11,18 +11,24 @@ class ShopifyLogger
     protected static ?LoggerInterface $fakeLogger = null;
 
     /**
-     * Get the configured logging channel.
+     * Get a logger that respects the master switch and optional category flag.
      *
-     * Returns a NullLogger when logging is disabled or a fake is not set,
-     * allowing callers to always call log methods without checking config.
+     * Returns a NullLogger when logging is disabled or the category is off,
+     * allowing callers to always call log methods without guard clauses.
+     *
+     * @param  string|null  $category  Config key under shopify.logging (e.g. 'log_token_lifecycle')
      */
-    public static function channel(): LoggerInterface
+    public static function log(?string $category = null): LoggerInterface
     {
         if (static::$fakeLogger) {
             return static::$fakeLogger;
         }
 
         if (! config('shopify.logging.enabled')) {
+            return new NullLogger;
+        }
+
+        if ($category && ! config("shopify.logging.{$category}", true)) {
             return new NullLogger;
         }
 

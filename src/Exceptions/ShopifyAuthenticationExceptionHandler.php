@@ -24,14 +24,12 @@ class ShopifyAuthenticationExceptionHandler
     public function render(ShopifyAuthenticationException $exception, Request $request)
     {
         // Log the authentication failure
-        if (config('shopify.logging.enabled')) {
-            ShopifyLogger::channel()->warning('Shopify authentication failed', [
-                'type' => $exception->getRequestType(),
-                'reason' => $exception->getReason(),
-                'shop' => $exception->getShopDomain(),
-                'url' => $request->fullUrl(),
-            ]);
-        }
+        ShopifyLogger::log('log_token_lifecycle')->warning('Shopify authentication failed', [
+            'type' => $exception->getRequestType(),
+            'reason' => $exception->getReason(),
+            'shop' => $exception->getShopDomain(),
+            'url' => $request->fullUrl(),
+        ]);
 
         // Handle embedded app requests
         if ($exception->isEmbeddedAppRequest()) {
@@ -78,13 +76,11 @@ class ShopifyAuthenticationExceptionHandler
     public function renderTokenRefreshRequired(TokenRefreshRequiredException $exception, Request $request)
     {
         // Log the token refresh failure
-        if (config('shopify.logging.enabled')) {
-            ShopifyLogger::channel()->warning('Token refresh required', [
-                'shop' => $exception->shop->domain,
-                'url' => $request->fullUrl(),
-                'message' => $exception->getMessage(),
-            ]);
-        }
+        ShopifyLogger::log('log_token_lifecycle')->warning('Token refresh required', [
+            'shop' => $exception->shop->domain,
+            'url' => $request->fullUrl(),
+            'message' => $exception->getMessage(),
+        ]);
 
         // For embedded apps (XHR), return JSON with requiresRefresh flag
         // Frontend should catch this and reload the page

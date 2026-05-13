@@ -3,7 +3,6 @@
 namespace Esign\LaravelShopify\Http\Middleware\Concerns;
 
 use Esign\LaravelShopify\Auth\SessionTokenHandler;
-use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\ShopifyLogger;
@@ -22,8 +21,6 @@ use Illuminate\Support\Facades\Auth;
  */
 trait VerifiesSessionTokens
 {
-    use ChecksLoggingConfig;
-
     /**
      * Build request array for Shopify library from Laravel request.
      */
@@ -88,9 +85,7 @@ trait VerifiesSessionTokens
             // Shop was previously uninstalled, restore it
             $shop->markAsReinstalled(null); // Access token will be set after token exchange
 
-            if ($this->shouldLog('log_shop_lifecycle')) {
-                ShopifyLogger::channel()->info('Shop reinstalled', ['shop' => $shopDomain]);
-            }
+            ShopifyLogger::log('log_shop_lifecycle')->info('Shop reinstalled', ['shop' => $shopDomain]);
 
             return $shop->fresh();
         }
@@ -102,9 +97,7 @@ trait VerifiesSessionTokens
                 'installed_at' => now(),
             ]);
 
-            if ($this->shouldLog('log_shop_lifecycle')) {
-                ShopifyLogger::channel()->info('New shop created', ['shop' => $shopDomain]);
-            }
+            ShopifyLogger::log('log_shop_lifecycle')->info('New shop created', ['shop' => $shopDomain]);
         }
 
         return $shop;
@@ -171,14 +164,12 @@ trait VerifiesSessionTokens
             $accessToken = $tokenResult->accessToken;
 
             // Log token details for debugging
-            if ($this->shouldLog('log_shop_lifecycle')) {
-                ShopifyLogger::channel()->info('Access token obtained for shop', [
-                    'shop' => $shop->domain,
-                    'expires' => $accessToken->expires ?? 'never',
-                    'has_refresh_token' => ! empty($accessToken->refreshToken),
-                    'refresh_token_expires' => $accessToken->refreshTokenExpires ?? 'never',
-                ]);
-            }
+            ShopifyLogger::log('log_shop_lifecycle')->info('Access token obtained for shop', [
+                'shop' => $shop->domain,
+                'expires' => $accessToken->expires ?? 'never',
+                'has_refresh_token' => ! empty($accessToken->refreshToken),
+                'refresh_token_expires' => $accessToken->refreshTokenExpires ?? 'never',
+            ]);
 
             $shop->update([
                 'access_token' => $accessToken->token,
@@ -217,8 +208,6 @@ trait VerifiesSessionTokens
      */
     protected function logVerificationFailure(string $type, string $reason, array $context = []): void
     {
-        if (config('shopify.logging.enabled')) {
-            ShopifyLogger::channel()->warning("Shopify {$type} verification failed: {$reason}", $context);
-        }
+        ShopifyLogger::log()->warning("Shopify {$type} verification failed: {$reason}", $context);
     }
 }

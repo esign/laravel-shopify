@@ -78,23 +78,19 @@ class SessionTokenHandler
                 throw new \RuntimeException('Token exchange failed: '.($result->log->message ?? 'Unknown error'));
             }
 
-            if (config('shopify.logging.enabled')) {
-                ShopifyLogger::channel()->info('Token exchange successful', [
-                    'shop' => $result->shop ?? 'unknown',
-                    'token_type' => $tokenType,
-                    'has_token' => ! empty($result->accessToken),
-                ]);
-            }
+            ShopifyLogger::log('log_token_lifecycle')->info('Token exchange successful', [
+                'shop' => $result->shop ?? 'unknown',
+                'token_type' => $tokenType,
+                'has_token' => ! empty($result->accessToken),
+            ]);
 
             return $result;
 
         } catch (\Exception $e) {
-            if (config('shopify.logging.enabled')) {
-                ShopifyLogger::channel()->error('Token exchange failed', [
-                    'error' => $e->getMessage(),
-                    'token_type' => $tokenType,
-                ]);
-            }
+            ShopifyLogger::log('log_token_lifecycle')->error('Token exchange failed', [
+                'error' => $e->getMessage(),
+                'token_type' => $tokenType,
+            ]);
 
             throw new \RuntimeException("Failed to exchange session token for access token: {$e->getMessage()}");
         }

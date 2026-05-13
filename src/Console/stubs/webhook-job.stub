@@ -21,7 +21,7 @@ class {{ class }} implements ShouldQueue
 
     public function handle(): void
     {
-        ShopifyLogger::channel()->info('{{ topic }} webhook received', [
+        ShopifyLogger::log('log_webhooks')->info('{{ topic }} webhook received', [
             'shop' => $this->shopDomain,
             'webhook_topic' => '{{ topic }}',
         ]);
@@ -30,7 +30,7 @@ class {{ class }} implements ShouldQueue
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            ShopifyLogger::channel()->warning('Shop not found for {{ topic }} webhook', [
+            ShopifyLogger::log('log_webhooks')->warning('Shop not found for {{ topic }} webhook', [
                 'shop' => $this->shopDomain,
             ]);
 
@@ -39,14 +39,14 @@ class {{ class }} implements ShouldQueue
 
         // TODO: Implement your webhook handling logic here
 
-        ShopifyLogger::channel()->info('{{ topic }} webhook processed', [
+        ShopifyLogger::log('log_webhooks')->info('{{ topic }} webhook processed', [
             'shop' => $this->shopDomain,
         ]);
     }
 
     public function failed(\Throwable $exception): void
     {
-        ShopifyLogger::channel()->error('{{ topic }} webhook job failed', [
+        ShopifyLogger::log('log_webhooks')->error('{{ topic }} webhook job failed', [
             'shop' => $this->shopDomain,
             'error' => $exception->getMessage(),
         ]);

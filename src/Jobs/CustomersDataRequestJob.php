@@ -2,7 +2,6 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
-use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
@@ -13,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 
 class CustomersDataRequestJob implements ShouldQueue
 {
-    use ChecksLoggingConfig, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Create a new job instance.
@@ -40,25 +39,21 @@ class CustomersDataRequestJob implements ShouldQueue
         $customerId = $this->webhookData['customer']['id'] ?? null;
         $customerEmail = $this->webhookData['customer']['email'] ?? null;
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer data request received', [
-                'shop' => $this->shopDomain,
-                'customer_id' => $customerId,
-                'customer_email' => $customerEmail,
-                'webhook_topic' => 'customers/data_request',
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data request received', [
+            'shop' => $this->shopDomain,
+            'customer_id' => $customerId,
+            'customer_email' => $customerEmail,
+            'webhook_topic' => 'customers/data_request',
+        ]);
 
         // Find the shop
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            if ($this->shouldLog('log_gdpr_events')) {
-                ShopifyLogger::channel()->warning('GDPR: Shop not found for customer data request', [
-                    'shop' => $this->shopDomain,
-                    'customer_id' => $customerId,
-                ]);
-            }
+            ShopifyLogger::log('log_gdpr_events')->warning('GDPR: Shop not found for customer data request', [
+                'shop' => $this->shopDomain,
+                'customer_id' => $customerId,
+            ]);
 
             return;
         }
@@ -68,12 +63,10 @@ class CustomersDataRequestJob implements ShouldQueue
         // $customerData = $this->collectCustomerData($shop, $customerId);
         // $this->sendDataToCustomer($customerEmail, $customerData);
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer data request processed', [
-                'shop' => $this->shopDomain,
-                'customer_id' => $customerId,
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data request processed', [
+            'shop' => $this->shopDomain,
+            'customer_id' => $customerId,
+        ]);
 
         // IMPORTANT: You have 30 days to fulfill this request
         // Consider storing a record of the request and its fulfillment status
@@ -114,11 +107,9 @@ class CustomersDataRequestJob implements ShouldQueue
 
         // Mail::to($email)->send(new CustomerDataExport($data));
 
-        if ($this->shouldLog('log_gdpr_events')) {
-            ShopifyLogger::channel()->info('GDPR: Customer data sent', [
-                'email' => $email,
-                'data_size' => count($data),
-            ]);
-        }
+        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data sent', [
+            'email' => $email,
+            'data_size' => count($data),
+        ]);
     }
 }
