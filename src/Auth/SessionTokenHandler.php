@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Auth;
 
+use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 
@@ -78,7 +79,7 @@ class SessionTokenHandler
                 throw new \RuntimeException('Token exchange failed: '.($result->log->message ?? 'Unknown error'));
             }
 
-            ShopifyLogger::log('log_token_lifecycle')->info('Token exchange successful', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token exchange successful', [
                 'shop' => $result->shop ?? 'unknown',
                 'token_type' => $tokenType,
                 'has_token' => ! empty($result->accessToken),
@@ -87,7 +88,7 @@ class SessionTokenHandler
             return $result;
 
         } catch (\Exception $e) {
-            ShopifyLogger::log('log_token_lifecycle')->error('Token exchange failed', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->error('Token exchange failed', [
                 'error' => $e->getMessage(),
                 'token_type' => $tokenType,
             ]);

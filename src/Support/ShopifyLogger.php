@@ -16,9 +16,9 @@ class ShopifyLogger
      * Returns a NullLogger when logging is disabled or the category is off,
      * allowing callers to always call log methods without guard clauses.
      *
-     * @param  string|null  $category  Config key under shopify.logging (e.g. 'log_token_lifecycle')
+     * @param  LogCategory|null  $category  Logging category to check
      */
-    public static function log(?string $category = null): LoggerInterface
+    public static function log(?LogCategory $category = null): LoggerInterface
     {
         if (static::$fakeLogger) {
             return static::$fakeLogger;
@@ -28,7 +28,7 @@ class ShopifyLogger
             return new NullLogger;
         }
 
-        if ($category && ! config("shopify.logging.{$category}", true)) {
+        if ($category && ! config("shopify.logging.{$category->value}", true)) {
             return new NullLogger;
         }
 

@@ -3,6 +3,7 @@
 namespace Esign\LaravelShopify\Webhooks;
 
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 
 class WebhookDispatcher
@@ -15,7 +16,7 @@ class WebhookDispatcher
         $config = config("shopify.webhooks.routes.{$topic}");
 
         if (! $config) {
-            ShopifyLogger::log('log_webhooks')->warning('No handler configured for webhook topic', [
+            ShopifyLogger::log(LogCategory::Webhooks)->warning('No handler configured for webhook topic', [
                 'topic' => $topic,
                 'shop' => $shop->domain,
             ]);
@@ -30,7 +31,7 @@ class WebhookDispatcher
         dispatch(new $jobClass($shop->domain, $webhookData))
             ->onQueue($queue);
 
-        ShopifyLogger::log('log_webhooks')->info('Webhook dispatched to queue', [
+        ShopifyLogger::log(LogCategory::Webhooks)->info('Webhook dispatched to queue', [
             'topic' => $topic,
             'shop' => $shop->domain,
             'job' => $jobClass,

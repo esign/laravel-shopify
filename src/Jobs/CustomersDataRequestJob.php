@@ -3,6 +3,7 @@
 namespace Esign\LaravelShopify\Jobs;
 
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,7 +40,7 @@ class CustomersDataRequestJob implements ShouldQueue
         $customerId = $this->webhookData['customer']['id'] ?? null;
         $customerEmail = $this->webhookData['customer']['email'] ?? null;
 
-        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data request received', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer data request received', [
             'shop' => $this->shopDomain,
             'customer_id' => $customerId,
             'customer_email' => $customerEmail,
@@ -50,7 +51,7 @@ class CustomersDataRequestJob implements ShouldQueue
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            ShopifyLogger::log('log_gdpr_events')->warning('GDPR: Shop not found for customer data request', [
+            ShopifyLogger::log(LogCategory::GdprEvents)->warning('GDPR: Shop not found for customer data request', [
                 'shop' => $this->shopDomain,
                 'customer_id' => $customerId,
             ]);
@@ -63,7 +64,7 @@ class CustomersDataRequestJob implements ShouldQueue
         // $customerData = $this->collectCustomerData($shop, $customerId);
         // $this->sendDataToCustomer($customerEmail, $customerData);
 
-        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data request processed', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer data request processed', [
             'shop' => $this->shopDomain,
             'customer_id' => $customerId,
         ]);
@@ -107,7 +108,7 @@ class CustomersDataRequestJob implements ShouldQueue
 
         // Mail::to($email)->send(new CustomerDataExport($data));
 
-        ShopifyLogger::log('log_gdpr_events')->info('GDPR: Customer data sent', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer data sent', [
             'email' => $email,
             'data_size' => count($data),
         ]);

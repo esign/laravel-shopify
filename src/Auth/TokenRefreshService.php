@@ -3,6 +3,7 @@
 namespace Esign\LaravelShopify\Auth;
 
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 
@@ -39,7 +40,7 @@ class TokenRefreshService
         try {
             // Validate shop has necessary data
             if (! $shop->refresh_token) {
-                ShopifyLogger::log('log_token_lifecycle')->error('Cannot refresh token: no refresh token', [
+                ShopifyLogger::log(LogCategory::TokenLifecycle)->error('Cannot refresh token: no refresh token', [
                     'shop' => $shop->domain,
                 ]);
 
@@ -48,7 +49,7 @@ class TokenRefreshService
 
             // Check if refresh token is expired (pre-validation)
             if ($shop->isRefreshTokenExpired()) {
-                ShopifyLogger::log('log_token_lifecycle')->warning('Refresh token expired, clearing tokens', [
+                ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Refresh token expired, clearing tokens', [
                     'shop' => $shop->domain,
                     'refresh_token_expires_at' => $shop->refresh_token_expires_at,
                 ]);
@@ -57,7 +58,7 @@ class TokenRefreshService
                 return false;
             }
 
-            ShopifyLogger::log('log_token_lifecycle')->info('Attempting token refresh', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Attempting token refresh', [
                 'shop' => $shop->domain,
                 'access_token_expires_at' => $shop->access_token_expires_at,
             ]);
@@ -73,7 +74,7 @@ class TokenRefreshService
 
             // Check result
             if (! $result->ok) {
-                ShopifyLogger::log('log_token_lifecycle')->error('Token refresh failed', [
+                ShopifyLogger::log(LogCategory::TokenLifecycle)->error('Token refresh failed', [
                     'shop' => $shop->domain,
                     'error_code' => $result->log->code,
                     'error_detail' => $result->log->detail,
@@ -81,7 +82,7 @@ class TokenRefreshService
 
                 // If refresh token is invalid/expired, clear tokens
                 if (in_array($result->log->code, ['invalid_grant', 'refresh_token_expired'])) {
-                    ShopifyLogger::log('log_token_lifecycle')->warning('Refresh token invalid, clearing all tokens', [
+                    ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Refresh token invalid, clearing all tokens', [
                         'shop' => $shop->domain,
                     ]);
                     $this->clearTokens($shop);
@@ -92,7 +93,7 @@ class TokenRefreshService
 
             // Check if library says token is still valid (no refresh needed)
             if ($result->log->code === 'token_still_valid') {
-                ShopifyLogger::log('log_token_lifecycle')->info('Token still valid, no refresh needed', [
+                ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token still valid, no refresh needed', [
                     'shop' => $shop->domain,
                 ]);
 
@@ -111,7 +112,7 @@ class TokenRefreshService
                 'access_token_last_refreshed_at' => now(),
             ]);
 
-            ShopifyLogger::log('log_token_lifecycle')->info('Token refresh successful', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token refresh successful', [
                 'shop' => $shop->domain,
                 'new_expires_at' => $newAccessToken->expires,
             ]);
@@ -119,7 +120,7 @@ class TokenRefreshService
             return true;
 
         } catch (\Exception $e) {
-            ShopifyLogger::log('log_token_lifecycle')->error('Token refresh exception', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->error('Token refresh exception', [
                 'shop' => $shop->domain,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -137,7 +138,7 @@ class TokenRefreshService
      */
     public function clearTokens(Shop $shop): void
     {
-        ShopifyLogger::log('log_token_lifecycle')->info('Clearing tokens', ['shop' => $shop->domain]);
+        ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Clearing tokens', ['shop' => $shop->domain]);
 
         $shop->update([
             'access_token' => null,

@@ -5,6 +5,7 @@ namespace Esign\LaravelShopify\Http\Middleware\Concerns;
 use Esign\LaravelShopify\Auth\SessionTokenHandler;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -85,7 +86,7 @@ trait VerifiesSessionTokens
             // Shop was previously uninstalled, restore it
             $shop->markAsReinstalled(null); // Access token will be set after token exchange
 
-            ShopifyLogger::log('log_shop_lifecycle')->info('Shop reinstalled', ['shop' => $shopDomain]);
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
 
             return $shop->fresh();
         }
@@ -97,7 +98,7 @@ trait VerifiesSessionTokens
                 'installed_at' => now(),
             ]);
 
-            ShopifyLogger::log('log_shop_lifecycle')->info('New shop created', ['shop' => $shopDomain]);
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('New shop created', ['shop' => $shopDomain]);
         }
 
         return $shop;
@@ -164,7 +165,7 @@ trait VerifiesSessionTokens
             $accessToken = $tokenResult->accessToken;
 
             // Log token details for debugging
-            ShopifyLogger::log('log_shop_lifecycle')->info('Access token obtained for shop', [
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Access token obtained for shop', [
                 'shop' => $shop->domain,
                 'expires' => $accessToken->expires ?? 'never',
                 'has_refresh_token' => ! empty($accessToken->refreshToken),

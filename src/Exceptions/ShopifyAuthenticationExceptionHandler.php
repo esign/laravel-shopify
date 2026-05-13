@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Exceptions;
 
+use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Http\Request;
 
@@ -24,7 +25,7 @@ class ShopifyAuthenticationExceptionHandler
     public function render(ShopifyAuthenticationException $exception, Request $request)
     {
         // Log the authentication failure
-        ShopifyLogger::log('log_token_lifecycle')->warning('Shopify authentication failed', [
+        ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Shopify authentication failed', [
             'type' => $exception->getRequestType(),
             'reason' => $exception->getReason(),
             'shop' => $exception->getShopDomain(),
@@ -76,7 +77,7 @@ class ShopifyAuthenticationExceptionHandler
     public function renderTokenRefreshRequired(TokenRefreshRequiredException $exception, Request $request)
     {
         // Log the token refresh failure
-        ShopifyLogger::log('log_token_lifecycle')->warning('Token refresh required', [
+        ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Token refresh required', [
             'shop' => $exception->shop->domain,
             'url' => $request->fullUrl(),
             'message' => $exception->getMessage(),
