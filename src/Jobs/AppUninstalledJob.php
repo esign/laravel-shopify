@@ -4,12 +4,13 @@ namespace Esign\LaravelShopify\Jobs;
 
 use Esign\LaravelShopify\Events\AppUninstalledEvent;
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class AppUninstalledJob implements ShouldQueue
 {
@@ -31,7 +32,7 @@ class AppUninstalledJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('App uninstalled webhook received', [
+        ShopifyLogger::log(LogCategory::ShopLifecycle)->info('App uninstalled webhook received', [
             'shop' => $this->shopDomain,
             'webhook_topic' => 'app/uninstalled',
         ]);
@@ -42,7 +43,7 @@ class AppUninstalledJob implements ShouldQueue
             ->first();
 
         if (! $shop) {
-            Log::warning('Shop not found for uninstall webhook', [
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->warning('Shop not found for uninstall webhook', [
                 'shop' => $this->shopDomain,
             ]);
 
@@ -51,7 +52,7 @@ class AppUninstalledJob implements ShouldQueue
 
         // If already soft-deleted, nothing to do
         if ($shop->trashed()) {
-            Log::info('Shop already marked as uninstalled', [
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop already marked as uninstalled', [
                 'shop' => $this->shopDomain,
             ]);
 
@@ -68,19 +69,18 @@ class AppUninstalledJob implements ShouldQueue
             'access_token_last_refreshed_at' => null,
         ]);
 
-        Log::info('Shop tokens cleared', [
+        ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop tokens cleared', [
             'shop' => $this->shopDomain,
         ]);
 
         // Soft delete the shop (marks as uninstalled)
         $shop->delete();
 
-        AppUninstalledEvent::dispatch($shop);
-
-        Log::info('Shop marked as uninstalled (soft deleted)', [
+        ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop marked as uninstalled (soft deleted)', [
             'shop' => $this->shopDomain,
             'uninstalled_at' => $shop->deleted_at,
         ]);
+        AppUninstalledEvent::dispatch($shop);
 
         // Optional: Trigger additional cleanup logic
         // $this->cleanupShopResources($shop);

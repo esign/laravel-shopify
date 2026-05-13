@@ -2,8 +2,9 @@
 
 namespace Esign\LaravelShopify\Exceptions;
 
+use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Handler for rendering Shopify authentication exceptions.
@@ -24,14 +25,12 @@ class ShopifyAuthenticationExceptionHandler
     public function render(ShopifyAuthenticationException $exception, Request $request)
     {
         // Log the authentication failure
-        if (config('shopify.logging.enabled')) {
-            Log::warning('Shopify authentication failed', [
-                'type' => $exception->getRequestType(),
-                'reason' => $exception->getReason(),
-                'shop' => $exception->getShopDomain(),
-                'url' => $request->fullUrl(),
-            ]);
-        }
+        ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Shopify authentication failed', [
+            'type' => $exception->getRequestType(),
+            'reason' => $exception->getReason(),
+            'shop' => $exception->getShopDomain(),
+            'url' => $request->fullUrl(),
+        ]);
 
         // Handle embedded app requests
         if ($exception->isEmbeddedAppRequest()) {
@@ -78,13 +77,11 @@ class ShopifyAuthenticationExceptionHandler
     public function renderTokenRefreshRequired(TokenRefreshRequiredException $exception, Request $request)
     {
         // Log the token refresh failure
-        if (config('shopify.logging.enabled')) {
-            Log::warning('Token refresh required', [
-                'shop' => $exception->shop->domain,
-                'url' => $request->fullUrl(),
-                'message' => $exception->getMessage(),
-            ]);
-        }
+        ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Token refresh required', [
+            'shop' => $exception->shop->domain,
+            'url' => $request->fullUrl(),
+            'message' => $exception->getMessage(),
+        ]);
 
         // For embedded apps (XHR), return JSON with requiresRefresh flag
         // Frontend should catch this and reload the page

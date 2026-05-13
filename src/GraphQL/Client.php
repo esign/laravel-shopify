@@ -5,18 +5,18 @@ namespace Esign\LaravelShopify\GraphQL;
 use Esign\LaravelShopify\Auth\TokenRefreshService;
 use Esign\LaravelShopify\Exceptions\TokenRefreshRequiredException;
 use Esign\LaravelShopify\GraphQL\Concerns\HandlesGraphQLErrors;
-use Esign\LaravelShopify\GraphQL\Concerns\LogsGraphQLOperations;
 use Esign\LaravelShopify\GraphQL\Contracts\Mutation;
 use Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery;
 use Esign\LaravelShopify\GraphQL\Contracts\Query;
 use Esign\LaravelShopify\Models\Shop;
-use Illuminate\Support\Facades\Log;
+use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 use Shopify\App\Types\GQLResult;
 
 class Client
 {
-    use HandlesGraphQLErrors, LogsGraphQLOperations;
+    use HandlesGraphQLErrors;
 
     protected ShopifyApp $shopifyApp;
 
@@ -34,7 +34,7 @@ class Client
      */
     public function query(Query $query): mixed
     {
-        $this->logOperation('query', $query->query(), $query->variables());
+        $this->logOperation('query', LogCategory::GraphqlQueries, $query->query(), $query->variables());
 
         $response = $this->executeGraphQL($query->query(), $query->variables());
 
@@ -46,7 +46,7 @@ class Client
      */
     public function mutation(Mutation $mutation): mixed
     {
-        $this->logOperation('mutation', $mutation->query(), $mutation->variables());
+        $this->logOperation('mutation', LogCategory::GraphqlMutations, $mutation->query(), $mutation->variables());
 
         $response = $this->executeGraphQL($mutation->query(), $mutation->variables());
 
@@ -61,7 +61,7 @@ class Client
         $results = [];
 
         do {
-            $this->logOperation('query', $query->query(), $query->variables());
+            $this->logOperation('query', LogCategory::GraphqlQueries, $query->query(), $query->variables());
 
             $response = $this->executeGraphQL($query->query(), $query->variables());
 
@@ -86,14 +86,14 @@ class Client
 
         // Check for authentication errors (retriable)
         if (! $result->ok && $this->isAuthenticationError($result)) {
-            Log::info('GraphQL authentication error detected, attempting token refresh', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->info('GraphQL authentication error detected, attempting token refresh', [
                 'shop' => $this->shop->domain,
                 'error_code' => $result->log->code,
                 'error_detail' => $result->log->detail,
             ]);
 
             if ($this->attemptTokenRefresh()) {
-                Log::info('Token refresh successful, retrying GraphQL request', [
+                ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token refresh successful, retrying GraphQL request', [
                     'shop' => $this->shop->domain,
                 ]);
 
@@ -153,7 +153,7 @@ class Client
 
             return false;
         } catch (\Exception $e) {
-            Log::error('Token refresh attempt failed', [
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->error('Token refresh attempt failed', [
                 'shop' => $this->shop->domain,
                 'error' => $e->getMessage(),
             ]);
@@ -190,5 +190,17 @@ class Client
         }
 
         return false;
+    }
+
+    /**
+     * Log a GraphQL operation if its category flag is enabled.
+     */
+    protected function logOperation(string $type, LogCategory $category, string $query, array $variables): void
+    {
+        ShopifyLogger::log($category)->info("GraphQL {$type} executed", [
+            'shop' => $this->shop->domain,
+            'query' => $query,
+            'variables' => $variables,
+        ]);
     }
 }

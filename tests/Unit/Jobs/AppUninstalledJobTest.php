@@ -4,17 +4,21 @@ namespace Esign\LaravelShopify\Tests\Unit\Jobs;
 
 use Esign\LaravelShopify\Jobs\AppUninstalledJob;
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Tests\TestCase;
-use Illuminate\Support\Facades\Log;
 
 class AppUninstalledJobTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        ShopifyLogger::clearFake();
+        parent::tearDown();
+    }
+
     /** @test */
     public function it_soft_deletes_shop_when_uninstalled()
     {
-        Log::shouldReceive('info')
-            ->times(3)
-            ->andReturnNull();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $this->assertFalse($shop->trashed());
@@ -30,12 +34,14 @@ class AppUninstalledJobTest extends TestCase
         $this->assertTrue($shop->trashed());
         $this->assertNull($shop->access_token);
         $this->assertNull($shop->refresh_token);
+
+        $logger->shouldHaveReceived('info')->times(3);
     }
 
     /** @test */
     public function it_clears_all_tokens_before_soft_deleting()
     {
-        Log::shouldReceive('info')->andReturnNull();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -64,15 +70,7 @@ class AppUninstalledJobTest extends TestCase
     /** @test */
     public function it_logs_warning_when_shop_not_found()
     {
-        Log::shouldReceive('info')
-            ->once()
-            ->with('App uninstalled webhook received', \Mockery::any());
-
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('Shop not found for uninstall webhook', [
-                'shop' => 'non-existent.myshopify.com',
-            ]);
+        $logger = ShopifyLogger::fake();
 
         $job = new AppUninstalledJob(
             shopDomain: 'non-existent.myshopify.com',
@@ -83,12 +81,22 @@ class AppUninstalledJobTest extends TestCase
 
         // Should not throw exception, just log and return
         $this->assertTrue(true);
+
+        $logger->shouldHaveReceived('info')
+            ->once()
+            ->with('App uninstalled webhook received', \Mockery::any());
+
+        $logger->shouldHaveReceived('warning')
+            ->once()
+            ->with('Shop not found for uninstall webhook', [
+                'shop' => 'non-existent.myshopify.com',
+            ]);
     }
 
     /** @test */
     public function it_handles_already_soft_deleted_shop()
     {
-        Log::shouldReceive('info')->andReturnNull();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $shop->delete(); // Soft delete first
@@ -103,7 +111,7 @@ class AppUninstalledJobTest extends TestCase
         $job->handle();
 
         // Should log that shop is already uninstalled and return early
-        Log::shouldHaveReceived('info')
+        $logger->shouldHaveReceived('info')
             ->with('Shop already marked as uninstalled', [
                 'shop' => 'test-shop.myshopify.com',
             ]);
@@ -115,27 +123,9 @@ class AppUninstalledJobTest extends TestCase
     /** @test */
     public function it_logs_at_each_step_of_uninstallation()
     {
+        $logger = ShopifyLogger::fake();
+
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
-
-        Log::shouldReceive('info')
-            ->once()
-            ->with('App uninstalled webhook received', [
-                'shop' => 'test-shop.myshopify.com',
-                'webhook_topic' => 'app/uninstalled',
-            ]);
-
-        Log::shouldReceive('info')
-            ->once()
-            ->with('Shop tokens cleared', [
-                'shop' => 'test-shop.myshopify.com',
-            ]);
-
-        Log::shouldReceive('info')
-            ->once()
-            ->with('Shop marked as uninstalled (soft deleted)', \Mockery::on(function ($arg) {
-                return $arg['shop'] === 'test-shop.myshopify.com'
-                    && isset($arg['uninstalled_at']);
-            }));
 
         $job = new AppUninstalledJob(
             shopDomain: 'test-shop.myshopify.com',
@@ -143,12 +133,29 @@ class AppUninstalledJobTest extends TestCase
         );
 
         $job->handle();
+
+        $logger->shouldHaveReceived('info')
+            ->with('App uninstalled webhook received', [
+                'shop' => 'test-shop.myshopify.com',
+                'webhook_topic' => 'app/uninstalled',
+            ]);
+
+        $logger->shouldHaveReceived('info')
+            ->with('Shop tokens cleared', [
+                'shop' => 'test-shop.myshopify.com',
+            ]);
+
+        $logger->shouldHaveReceived('info')
+            ->with('Shop marked as uninstalled (soft deleted)', \Mockery::on(function ($arg) {
+                return $arg['shop'] === 'test-shop.myshopify.com'
+                    && isset($arg['uninstalled_at']);
+            }));
     }
 
     /** @test */
     public function it_preserves_shop_data_after_soft_delete()
     {
-        Log::shouldReceive('info')->andReturnNull();
+        ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',

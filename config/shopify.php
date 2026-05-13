@@ -40,9 +40,6 @@ return [
         // Number of minutes before token expiration to consider it "expiring soon"
         // Used by Shop::isAccessTokenExpiringSoon() helper method
         'buffer_minutes' => 5,
-
-        // Whether to log token lifecycle events (refresh, expiration, etc.)
-        'log_token_lifecycle' => env('SHOPIFY_LOG_TOKEN_LIFECYCLE', true),
     ],
 
     /*
@@ -108,13 +105,26 @@ return [
     |--------------------------------------------------------------------------
     | Logging Configuration
     |--------------------------------------------------------------------------
+    |
+    | Hierarchical logging configuration with master switch and category flags.
+    | The 'enabled' flag is the master switch - when false, NO logs are written.
+    | Category-specific flags only apply when 'enabled' is true.
+    |
     */
 
     'logging' => [
+        // Master switch - disables ALL Shopify logging when false
         'enabled' => env('SHOPIFY_LOGGING_ENABLED', true),
+
+        // Log channel to use for all Shopify logs
         'channel' => env('SHOPIFY_LOG_CHANNEL', 'stack'),
-        'log_queries' => true, // Log all GraphQL queries
-        'log_mutations' => true, // Log all GraphQL mutations
-        'log_webhooks' => true, // Log webhook dispatch
+
+        // Category-specific flags (only apply when 'enabled' is true)
+        'log_graphql_queries' => env('SHOPIFY_LOG_GRAPHQL_QUERIES', true),
+        'log_graphql_mutations' => env('SHOPIFY_LOG_GRAPHQL_MUTATIONS', true),
+        'log_webhooks' => env('SHOPIFY_LOG_WEBHOOKS', true),
+        'log_token_lifecycle' => env('SHOPIFY_LOG_TOKEN_LIFECYCLE', true),
+        'log_shop_lifecycle' => env('SHOPIFY_LOG_SHOP_LIFECYCLE', true),
+        'log_gdpr_events' => env('SHOPIFY_LOG_GDPR_EVENTS', true),
     ],
 ];

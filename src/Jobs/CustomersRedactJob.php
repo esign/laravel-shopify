@@ -3,12 +3,13 @@
 namespace Esign\LaravelShopify\Jobs;
 
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class CustomersRedactJob implements ShouldQueue
 {
@@ -42,7 +43,7 @@ class CustomersRedactJob implements ShouldQueue
         $customerEmail = $this->webhookData['customer']['email'] ?? null;
         $ordersToRedact = $this->webhookData['orders_to_redact'] ?? [];
 
-        Log::info('GDPR: Customer redaction request received', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer redaction request received', [
             'shop' => $this->shopDomain,
             'customer_id' => $customerId,
             'customer_email' => $customerEmail,
@@ -54,7 +55,7 @@ class CustomersRedactJob implements ShouldQueue
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            Log::warning('GDPR: Shop not found for customer redaction', [
+            ShopifyLogger::log(LogCategory::GdprEvents)->warning('GDPR: Shop not found for customer redaction', [
                 'shop' => $this->shopDomain,
                 'customer_id' => $customerId,
             ]);
@@ -67,7 +68,7 @@ class CustomersRedactJob implements ShouldQueue
         // $this->redactCustomerData($shop, $customerId);
         // $this->anonymizeCustomerOrders($shop, $ordersToRedact);
 
-        Log::info('GDPR: Customer data redacted', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer data redacted', [
             'shop' => $this->shopDomain,
             'customer_id' => $customerId,
         ]);
@@ -92,7 +93,7 @@ class CustomersRedactJob implements ShouldQueue
         //     ->where('customer_id', $customerId)
         //     ->delete();
 
-        Log::info('GDPR: Customer personal data deleted', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer personal data deleted', [
             'shop' => $shop->domain,
             'customer_id' => $customerId,
         ]);
@@ -121,7 +122,7 @@ class CustomersRedactJob implements ShouldQueue
         //         ]);
         // }
 
-        Log::info('GDPR: Customer orders anonymized', [
+        ShopifyLogger::log(LogCategory::GdprEvents)->info('GDPR: Customer orders anonymized', [
             'shop' => $shop->domain,
             'orders_count' => count($orderIds),
         ]);

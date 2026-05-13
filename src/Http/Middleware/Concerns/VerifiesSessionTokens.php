@@ -7,9 +7,10 @@ use Esign\LaravelShopify\Events\AppInstalledEvent;
 use Esign\LaravelShopify\Events\AppReinstalledEvent;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Trait for verifying session tokens in UI extensions and embedded apps.
@@ -86,7 +87,8 @@ trait VerifiesSessionTokens
         if ($shop && $shop->trashed()) {
             // Shop was previously uninstalled, restore it
             $shop->markAsReinstalled(null); // Access token will be set after token exchange
-            Log::info('Shop reinstalled', ['shop' => $shopDomain]);
+
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
 
             $restoredShop = $shop->fresh();
             AppReinstalledEvent::dispatch($restoredShop);
@@ -101,7 +103,7 @@ trait VerifiesSessionTokens
                 'installed_at' => now(),
             ]);
 
-            Log::info('New shop created', ['shop' => $shopDomain]);
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('New shop created', ['shop' => $shopDomain]);
             AppInstalledEvent::dispatch($shop);
         }
 
@@ -169,7 +171,7 @@ trait VerifiesSessionTokens
             $accessToken = $tokenResult->accessToken;
 
             // Log token details for debugging
-            Log::info('Access token obtained for shop', [
+            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Access token obtained for shop', [
                 'shop' => $shop->domain,
                 'expires' => $accessToken->expires ?? 'never',
                 'has_refresh_token' => ! empty($accessToken->refreshToken),
@@ -213,8 +215,6 @@ trait VerifiesSessionTokens
      */
     protected function logVerificationFailure(string $type, string $reason, array $context = []): void
     {
-        if (config('shopify.logging.enabled')) {
-            Log::warning("Shopify {$type} verification failed: {$reason}", $context);
-        }
+        ShopifyLogger::log()->warning("Shopify {$type} verification failed: {$reason}", $context);
     }
 }
