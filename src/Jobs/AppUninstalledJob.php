@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
+use Esign\LaravelShopify\Events\AppUninstalledEvent;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
@@ -79,6 +80,7 @@ class AppUninstalledJob implements ShouldQueue
             'shop' => $this->shopDomain,
             'uninstalled_at' => $shop->deleted_at,
         ]);
+        AppUninstalledEvent::dispatch($shop);
 
         // Optional: Trigger additional cleanup logic
         // $this->cleanupShopResources($shop);

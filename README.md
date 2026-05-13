@@ -1,5 +1,7 @@
 # Laravel Shopify
 
+[![run-tests](https://github.com/esign/laravel-shopify/actions/workflows/run-tests.yml/badge.svg)](https://github.com/esign/laravel-shopify/actions/workflows/run-tests.yml)
+
 A modern Laravel package for building **embedded Shopify apps** using **session tokens** and **Shopify Managed Installation**. Built on top of the official `shopify/shopify-app-php` library.
 
 ## Features
@@ -543,6 +545,58 @@ class OrdersCreateJob implements ShouldQueue
         // YourOrder::create([...]);
     }
 }
+```
+
+### Events
+
+The package dispatches Laravel events during the app lifecycle that you can listen to:
+
+| Event | Dispatched From | When |
+|-------|-----------------|------|
+| `AppInstalledEvent` | Middleware | After a new shop record is created |
+| `AppReinstalledEvent` | Middleware | After a soft-deleted shop is restored |
+| `AppUninstalledEvent` | `AppUninstalledJob` | After shop is soft-deleted |
+
+All events contain the `Shop` model and are dispatched synchronously (after the database operation succeeds).
+
+**Example: Listening to Events**
+
+```php
+// In EventServiceProvider or via Event::listen()
+use Esign\LaravelShopify\Events\AppInstalledEvent;
+use Esign\LaravelShopify\Events\AppUninstalledEvent;
+
+Event::listen(AppInstalledEvent::class, function (AppInstalledEvent $event) {
+    // $event->shop contains the Shop model
+    Log::info('New shop installed', ['domain' => $event->shop->domain]);
+    
+    // Dispatch a job if heavy processing is needed
+    dispatch(new SetupNewShopJob($event->shop));
+});
+
+Event::listen(AppUninstalledEvent::class, function (AppUninstalledEvent $event) {
+    // Clean up external resources, notify team, etc.
+});
+```
+
+### GDPR Compliance
+
+Schedule cleanup of uninstalled shops:
+
+```php
+// In app/Console/Kernel.php
+protected function schedule(Schedule $schedule)
+{
+    // Delete shops soft-deleted 90+ days ago
+    $schedule->command('shopify:cleanup-uninstalled-shops --days=90 --force')
+        ->daily();
+}
+```
+
+Or run manually:
+
+```bash
+php artisan shopify:cleanup-uninstalled-shops --days=90
 ```
 
 ## Middleware
