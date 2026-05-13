@@ -3,8 +3,8 @@
 namespace Esign\LaravelShopify\Tests\Unit\Auth;
 
 use Esign\LaravelShopify\Auth\TokenRefreshService;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Tests\TestCase;
-use Illuminate\Support\Facades\Log;
 use Shopify\App\ShopifyApp;
 use Shopify\App\Types\Log as ShopifyLog;
 use Shopify\App\Types\ResponseInfo;
@@ -21,14 +21,16 @@ class TokenRefreshServiceTest extends TestCase
         $this->service = new TokenRefreshService;
     }
 
+    protected function tearDown(): void
+    {
+        ShopifyLogger::clearFake();
+        parent::tearDown();
+    }
+
     /** @test */
     public function it_returns_false_when_shop_has_no_refresh_token()
     {
-        Log::shouldReceive('error')
-            ->once()
-            ->with('Cannot refresh token: no refresh token', [
-                'shop' => 'test-shop.myshopify.com',
-            ]);
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -39,18 +41,18 @@ class TokenRefreshServiceTest extends TestCase
         $result = $this->service->refreshAccessToken($shop);
 
         $this->assertFalse($result);
+
+        $logger->shouldHaveReceived('error')
+            ->once()
+            ->with('Cannot refresh token: no refresh token', [
+                'shop' => 'test-shop.myshopify.com',
+            ]);
     }
 
     /** @test */
     public function it_clears_tokens_when_refresh_token_is_expired()
     {
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('Refresh token expired, clearing tokens', \Mockery::any());
-
-        Log::shouldReceive('info')
-            ->once()
-            ->with('Clearing tokens', \Mockery::any());
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -64,12 +66,20 @@ class TokenRefreshServiceTest extends TestCase
         $this->assertFalse($result);
         $this->assertNull($shop->fresh()->access_token);
         $this->assertNull($shop->fresh()->refresh_token);
+
+        $logger->shouldHaveReceived('warning')
+            ->once()
+            ->with('Refresh token expired, clearing tokens', \Mockery::any());
+
+        $logger->shouldHaveReceived('info')
+            ->once()
+            ->with('Clearing tokens', \Mockery::any());
     }
 
     /** @test */
     public function it_successfully_refreshes_token_and_updates_shop()
     {
-        Log::shouldReceive('info')->times(2);
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -119,12 +129,14 @@ class TokenRefreshServiceTest extends TestCase
         $this->assertEquals('new_access_token', $shop->access_token);
         $this->assertEquals('new_refresh_token', $shop->refresh_token);
         $this->assertNotNull($shop->access_token_last_refreshed_at);
+
+        $logger->shouldHaveReceived('info')->times(2);
     }
 
     /** @test */
     public function it_returns_true_when_token_is_still_valid()
     {
-        Log::shouldReceive('info')->twice();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -156,17 +168,14 @@ class TokenRefreshServiceTest extends TestCase
         $result = $this->service->refreshAccessToken($shop);
 
         $this->assertTrue($result);
+
+        $logger->shouldHaveReceived('info')->twice();
     }
 
     /** @test */
     public function it_clears_tokens_on_invalid_grant_error()
     {
-        Log::shouldReceive('info')->once();
-        Log::shouldReceive('error')->once();
-        Log::shouldReceive('warning')->once()
-            ->with('Refresh token invalid, clearing all tokens', \Mockery::any());
-        Log::shouldReceive('info')->once()
-            ->with('Clearing tokens', \Mockery::any());
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -199,16 +208,17 @@ class TokenRefreshServiceTest extends TestCase
         $this->assertFalse($result);
         $this->assertNull($shop->fresh()->access_token);
         $this->assertNull($shop->fresh()->refresh_token);
+
+        $logger->shouldHaveReceived('info')->twice();
+        $logger->shouldHaveReceived('error')->once();
+        $logger->shouldHaveReceived('warning')
+            ->with('Refresh token invalid, clearing all tokens', \Mockery::any());
     }
 
     /** @test */
     public function it_handles_token_refresh_exception()
     {
-        Log::shouldReceive('info')->once();
-        Log::shouldReceive('error')->once()
-            ->with('Token refresh exception', \Mockery::on(function ($arg) {
-                return isset($arg['shop']) && isset($arg['error']);
-            }));
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -230,14 +240,19 @@ class TokenRefreshServiceTest extends TestCase
         $result = $this->service->refreshAccessToken($shop);
 
         $this->assertFalse($result);
+
+        $logger->shouldHaveReceived('info')->once();
+        $logger->shouldHaveReceived('error')
+            ->once()
+            ->with('Token refresh exception', \Mockery::on(function ($arg) {
+                return isset($arg['shop']) && isset($arg['error']);
+            }));
     }
 
     /** @test */
     public function it_clears_tokens_properly()
     {
-        Log::shouldReceive('info')
-            ->once()
-            ->with('Clearing tokens', ['shop' => 'test-shop.myshopify.com']);
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
@@ -254,5 +269,9 @@ class TokenRefreshServiceTest extends TestCase
         $this->assertNull($shop->access_token_expires_at);
         $this->assertNull($shop->refresh_token);
         $this->assertNull($shop->refresh_token_expires_at);
+
+        $logger->shouldHaveReceived('info')
+            ->once()
+            ->with('Clearing tokens', ['shop' => 'test-shop.myshopify.com']);
     }
 }

@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\Auth;
 
-use Illuminate\Support\Facades\Log;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 
 /**
@@ -79,7 +79,7 @@ class SessionTokenHandler
             }
 
             if (config('shopify.logging.enabled')) {
-                Log::info('Token exchange successful', [
+                ShopifyLogger::channel()->info('Token exchange successful', [
                     'shop' => $result->shop ?? 'unknown',
                     'token_type' => $tokenType,
                     'has_token' => ! empty($result->accessToken),
@@ -90,7 +90,7 @@ class SessionTokenHandler
 
         } catch (\Exception $e) {
             if (config('shopify.logging.enabled')) {
-                Log::error('Token exchange failed', [
+                ShopifyLogger::channel()->error('Token exchange failed', [
                     'error' => $e->getMessage(),
                     'token_type' => $tokenType,
                 ]);

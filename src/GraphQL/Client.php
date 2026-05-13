@@ -11,7 +11,7 @@ use Esign\LaravelShopify\GraphQL\Contracts\Mutation;
 use Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery;
 use Esign\LaravelShopify\GraphQL\Contracts\Query;
 use Esign\LaravelShopify\Models\Shop;
-use Illuminate\Support\Facades\Log;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 use Shopify\App\Types\GQLResult;
 
@@ -88,7 +88,7 @@ class Client
         // Check for authentication errors (retriable)
         if (! $result->ok && $this->isAuthenticationError($result)) {
             if ($this->shouldLog('log_token_lifecycle')) {
-                Log::info('GraphQL authentication error detected, attempting token refresh', [
+                ShopifyLogger::channel()->info('GraphQL authentication error detected, attempting token refresh', [
                     'shop' => $this->shop->domain,
                     'error_code' => $result->log->code,
                     'error_detail' => $result->log->detail,
@@ -97,7 +97,7 @@ class Client
 
             if ($this->attemptTokenRefresh()) {
                 if ($this->shouldLog('log_token_lifecycle')) {
-                    Log::info('Token refresh successful, retrying GraphQL request', [
+                    ShopifyLogger::channel()->info('Token refresh successful, retrying GraphQL request', [
                         'shop' => $this->shop->domain,
                     ]);
                 }
@@ -159,7 +159,7 @@ class Client
             return false;
         } catch (\Exception $e) {
             if ($this->shouldLog('log_token_lifecycle')) {
-                Log::error('Token refresh attempt failed', [
+                ShopifyLogger::channel()->error('Token refresh attempt failed', [
                     'shop' => $this->shop->domain,
                     'error' => $e->getMessage(),
                 ]);

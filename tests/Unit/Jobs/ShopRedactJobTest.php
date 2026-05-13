@@ -4,16 +4,21 @@ namespace Esign\LaravelShopify\Tests\Unit\Jobs;
 
 use Esign\LaravelShopify\Jobs\ShopRedactJob;
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Tests\TestCase;
-use Illuminate\Support\Facades\Log;
 
 class ShopRedactJobTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        ShopifyLogger::clearFake();
+        parent::tearDown();
+    }
+
     /** @test */
     public function it_permanently_deletes_soft_deleted_shop()
     {
-        Log::shouldReceive('info')->twice();
-        Log::shouldReceive('warning')->zeroOrMoreTimes(); // May or may not warn depending on deleted_at time
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $shop->delete(); // Soft delete first
@@ -34,7 +39,7 @@ class ShopRedactJobTest extends TestCase
         // Verify shop is permanently deleted
         $this->assertNull(Shop::withTrashed()->find($shopId));
 
-        Log::shouldHaveReceived('info')
+        $logger->shouldHaveReceived('info')
             ->with('GDPR: Shop data permanently deleted', [
                 'shop' => 'test-shop.myshopify.com',
                 'shop_id' => 123456,
@@ -44,7 +49,7 @@ class ShopRedactJobTest extends TestCase
     /** @test */
     public function it_soft_then_force_deletes_active_shop()
     {
-        Log::shouldReceive('info')->twice();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $shopId = $shop->id;
@@ -60,21 +65,14 @@ class ShopRedactJobTest extends TestCase
 
         // Verify shop is permanently deleted
         $this->assertNull(Shop::withTrashed()->find($shopId));
+
+        $logger->shouldHaveReceived('info')->twice();
     }
 
     /** @test */
     public function it_handles_shop_not_found()
     {
-        Log::shouldReceive('info')
-            ->once()
-            ->with('GDPR: Shop redaction request received', \Mockery::any());
-
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('GDPR: Shop not found for redaction', [
-                'shop' => 'non-existent.myshopify.com',
-                'shop_id' => 999,
-            ]);
+        $logger = ShopifyLogger::fake();
 
         $job = new ShopRedactJob(
             shopDomain: 'non-existent.myshopify.com',
@@ -84,19 +82,23 @@ class ShopRedactJobTest extends TestCase
         $job->handle();
 
         $this->assertTrue(true); // Should not throw exception
+
+        $logger->shouldHaveReceived('info')
+            ->once()
+            ->with('GDPR: Shop redaction request received', \Mockery::any());
+
+        $logger->shouldHaveReceived('warning')
+            ->once()
+            ->with('GDPR: Shop not found for redaction', [
+                'shop' => 'non-existent.myshopify.com',
+                'shop_id' => 999,
+            ]);
     }
 
     /** @test */
     public function it_warns_when_redacting_before_48_hour_retention()
     {
-        Log::shouldReceive('info')->twice();
-
-        Log::shouldReceive('warning')
-            ->once()
-            ->with('GDPR: Shop redaction requested before 48-hour minimum retention', \Mockery::on(function ($arg) {
-                return isset($arg['shop'])
-                    && isset($arg['uninstalled_at']);
-            }));
+        $logger = ShopifyLogger::fake();
 
         // Shop soft-deleted only 24 hours ago
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
@@ -115,15 +117,20 @@ class ShopRedactJobTest extends TestCase
 
         // Should still process the deletion even with warning
         $this->assertNull(Shop::withTrashed()->where('domain', 'test-shop.myshopify.com')->first());
+
+        $logger->shouldHaveReceived('info')->twice();
+        $logger->shouldHaveReceived('warning')
+            ->once()
+            ->with('GDPR: Shop redaction requested before 48-hour minimum retention', \Mockery::on(function ($arg) {
+                return isset($arg['shop'])
+                    && isset($arg['uninstalled_at']);
+            }));
     }
 
     /** @test */
     public function it_does_not_warn_when_48_hours_have_passed()
     {
-        Log::shouldReceive('info')->twice();
-
-        // Should NOT receive warning
-        Log::shouldReceive('warning')->never();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $shop->delete();
@@ -140,24 +147,15 @@ class ShopRedactJobTest extends TestCase
         $job->handle();
 
         $this->assertNull(Shop::withTrashed()->where('domain', 'test-shop.myshopify.com')->first());
+
+        $logger->shouldHaveReceived('info')->twice();
+        $logger->shouldNotHaveReceived('warning');
     }
 
     /** @test */
     public function it_logs_redaction_request_received()
     {
-        Log::shouldReceive('info')
-            ->once()
-            ->with('GDPR: Shop redaction request received', [
-                'shop' => 'test-shop.myshopify.com',
-                'shop_id' => 12345,
-                'webhook_topic' => 'shop/redact',
-            ]);
-
-        Log::shouldReceive('info')
-            ->once()
-            ->with('GDPR: Shop data permanently deleted', \Mockery::any());
-
-        Log::shouldReceive('warning')->never();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $shop->delete();
@@ -172,13 +170,24 @@ class ShopRedactJobTest extends TestCase
         );
 
         $job->handle();
+
+        $logger->shouldHaveReceived('info')
+            ->with('GDPR: Shop redaction request received', [
+                'shop' => 'test-shop.myshopify.com',
+                'shop_id' => 12345,
+                'webhook_topic' => 'shop/redact',
+            ]);
+
+        $logger->shouldHaveReceived('info')
+            ->with('GDPR: Shop data permanently deleted', \Mockery::any());
+
+        $logger->shouldNotHaveReceived('warning');
     }
 
     /** @test */
     public function it_handles_missing_shop_id_in_webhook_data()
     {
-        Log::shouldReceive('info')->twice();
-        Log::shouldReceive('warning')->never();
+        $logger = ShopifyLogger::fake();
 
         $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
         $shop->delete();
@@ -194,7 +203,7 @@ class ShopRedactJobTest extends TestCase
 
         $job->handle();
 
-        Log::shouldHaveReceived('info')
+        $logger->shouldHaveReceived('info')
             ->with('GDPR: Shop redaction request received', [
                 'shop' => 'test-shop.myshopify.com',
                 'shop_id' => null,

@@ -2,8 +2,8 @@
 
 namespace Esign\LaravelShopify\Exceptions;
 
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Handler for rendering Shopify authentication exceptions.
@@ -25,7 +25,7 @@ class ShopifyAuthenticationExceptionHandler
     {
         // Log the authentication failure
         if (config('shopify.logging.enabled')) {
-            Log::warning('Shopify authentication failed', [
+            ShopifyLogger::channel()->warning('Shopify authentication failed', [
                 'type' => $exception->getRequestType(),
                 'reason' => $exception->getReason(),
                 'shop' => $exception->getShopDomain(),
@@ -79,7 +79,7 @@ class ShopifyAuthenticationExceptionHandler
     {
         // Log the token refresh failure
         if (config('shopify.logging.enabled')) {
-            Log::warning('Token refresh required', [
+            ShopifyLogger::channel()->warning('Token refresh required', [
                 'shop' => $exception->shop->domain,
                 'url' => $request->fullUrl(),
                 'message' => $exception->getMessage(),

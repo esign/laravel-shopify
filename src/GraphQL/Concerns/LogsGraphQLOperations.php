@@ -2,21 +2,17 @@
 
 namespace Esign\LaravelShopify\GraphQL\Concerns;
 
-use Illuminate\Support\Facades\Log;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 
 trait LogsGraphQLOperations
 {
     protected function logOperation(string $type, string $query, array $variables): void
     {
-        if (! config('shopify.logging.enabled')) {
-            return;
-        }
-
         $shouldLog = ($type === 'query' && config('shopify.logging.log_graphql_queries'))
             || ($type === 'mutation' && config('shopify.logging.log_graphql_mutations'));
 
         if ($shouldLog) {
-            Log::channel(config('shopify.logging.channel'))->info("GraphQL {$type} executed", [
+            ShopifyLogger::channel()->info("GraphQL {$type} executed", [
                 'shop' => $this->shop->domain,
                 'query' => $query,
                 'variables' => $variables,

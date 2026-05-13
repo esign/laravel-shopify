@@ -4,7 +4,7 @@ namespace Esign\LaravelShopify\Auth;
 
 use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
-use Illuminate\Support\Facades\Log;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 
 /**
@@ -43,7 +43,7 @@ class TokenRefreshService
             // Validate shop has necessary data
             if (! $shop->refresh_token) {
                 if ($this->shouldLog('log_token_lifecycle')) {
-                    Log::error('Cannot refresh token: no refresh token', [
+                    ShopifyLogger::channel()->error('Cannot refresh token: no refresh token', [
                         'shop' => $shop->domain,
                     ]);
                 }
@@ -54,7 +54,7 @@ class TokenRefreshService
             // Check if refresh token is expired (pre-validation)
             if ($shop->isRefreshTokenExpired()) {
                 if ($this->shouldLog('log_token_lifecycle')) {
-                    Log::warning('Refresh token expired, clearing tokens', [
+                    ShopifyLogger::channel()->warning('Refresh token expired, clearing tokens', [
                         'shop' => $shop->domain,
                         'refresh_token_expires_at' => $shop->refresh_token_expires_at,
                     ]);
@@ -65,7 +65,7 @@ class TokenRefreshService
             }
 
             if ($this->shouldLog('log_token_lifecycle')) {
-                Log::info('Attempting token refresh', [
+                ShopifyLogger::channel()->info('Attempting token refresh', [
                     'shop' => $shop->domain,
                     'access_token_expires_at' => $shop->access_token_expires_at,
                 ]);
@@ -83,7 +83,7 @@ class TokenRefreshService
             // Check result
             if (! $result->ok) {
                 if ($this->shouldLog('log_token_lifecycle')) {
-                    Log::error('Token refresh failed', [
+                    ShopifyLogger::channel()->error('Token refresh failed', [
                         'shop' => $shop->domain,
                         'error_code' => $result->log->code,
                         'error_detail' => $result->log->detail,
@@ -93,7 +93,7 @@ class TokenRefreshService
                 // If refresh token is invalid/expired, clear tokens
                 if (in_array($result->log->code, ['invalid_grant', 'refresh_token_expired'])) {
                     if ($this->shouldLog('log_token_lifecycle')) {
-                        Log::warning('Refresh token invalid, clearing all tokens', [
+                        ShopifyLogger::channel()->warning('Refresh token invalid, clearing all tokens', [
                             'shop' => $shop->domain,
                         ]);
                     }
@@ -106,7 +106,7 @@ class TokenRefreshService
             // Check if library says token is still valid (no refresh needed)
             if ($result->log->code === 'token_still_valid') {
                 if ($this->shouldLog('log_token_lifecycle')) {
-                    Log::info('Token still valid, no refresh needed', [
+                    ShopifyLogger::channel()->info('Token still valid, no refresh needed', [
                         'shop' => $shop->domain,
                     ]);
                 }
@@ -127,7 +127,7 @@ class TokenRefreshService
             ]);
 
             if ($this->shouldLog('log_token_lifecycle')) {
-                Log::info('Token refresh successful', [
+                ShopifyLogger::channel()->info('Token refresh successful', [
                     'shop' => $shop->domain,
                     'new_expires_at' => $newAccessToken->expires,
                 ]);
@@ -137,7 +137,7 @@ class TokenRefreshService
 
         } catch (\Exception $e) {
             if ($this->shouldLog('log_token_lifecycle')) {
-                Log::error('Token refresh exception', [
+                ShopifyLogger::channel()->error('Token refresh exception', [
                     'shop' => $shop->domain,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -157,7 +157,7 @@ class TokenRefreshService
     public function clearTokens(Shop $shop): void
     {
         if ($this->shouldLog('log_token_lifecycle')) {
-            Log::info('Clearing tokens', ['shop' => $shop->domain]);
+            ShopifyLogger::channel()->info('Clearing tokens', ['shop' => $shop->domain]);
         }
 
         $shop->update([

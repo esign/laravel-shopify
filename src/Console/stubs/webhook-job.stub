@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 
 class {{ class }} implements ShouldQueue
 {
@@ -21,7 +21,7 @@ class {{ class }} implements ShouldQueue
 
     public function handle(): void
     {
-        Log::info('{{ topic }} webhook received', [
+        ShopifyLogger::channel()->info('{{ topic }} webhook received', [
             'shop' => $this->shopDomain,
             'webhook_topic' => '{{ topic }}',
         ]);
@@ -30,7 +30,7 @@ class {{ class }} implements ShouldQueue
         $shop = Shop::where('domain', $this->shopDomain)->first();
 
         if (! $shop) {
-            Log::warning('Shop not found for {{ topic }} webhook', [
+            ShopifyLogger::channel()->warning('Shop not found for {{ topic }} webhook', [
                 'shop' => $this->shopDomain,
             ]);
 
@@ -39,14 +39,14 @@ class {{ class }} implements ShouldQueue
 
         // TODO: Implement your webhook handling logic here
 
-        Log::info('{{ topic }} webhook processed', [
+        ShopifyLogger::channel()->info('{{ topic }} webhook processed', [
             'shop' => $this->shopDomain,
         ]);
     }
 
     public function failed(\Throwable $exception): void
     {
-        Log::error('{{ topic }} webhook job failed', [
+        ShopifyLogger::channel()->error('{{ topic }} webhook job failed', [
             'shop' => $this->shopDomain,
             'error' => $exception->getMessage(),
         ]);

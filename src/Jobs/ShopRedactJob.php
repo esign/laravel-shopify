@@ -4,12 +4,12 @@ namespace Esign\LaravelShopify\Jobs;
 
 use Esign\LaravelShopify\Concerns\ChecksLoggingConfig;
 use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 class ShopRedactJob implements ShouldQueue
 {
@@ -42,7 +42,7 @@ class ShopRedactJob implements ShouldQueue
         $shopId = $this->webhookData['shop_id'] ?? null;
 
         if ($this->shouldLog('log_gdpr_events')) {
-            Log::info('GDPR: Shop redaction request received', [
+            ShopifyLogger::channel()->info('GDPR: Shop redaction request received', [
                 'shop' => $this->shopDomain,
                 'shop_id' => $shopId,
                 'webhook_topic' => 'shop/redact',
@@ -56,7 +56,7 @@ class ShopRedactJob implements ShouldQueue
 
         if (! $shop) {
             if ($this->shouldLog('log_gdpr_events')) {
-                Log::warning('GDPR: Shop not found for redaction', [
+                ShopifyLogger::channel()->warning('GDPR: Shop not found for redaction', [
                     'shop' => $this->shopDomain,
                     'shop_id' => $shopId,
                 ]);
@@ -68,7 +68,7 @@ class ShopRedactJob implements ShouldQueue
         // Check if shop was uninstalled at least 48 hours ago
         if ($shop->deleted_at && $shop->deleted_at->addHours(48)->isFuture()) {
             if ($this->shouldLog('log_gdpr_events')) {
-                Log::warning('GDPR: Shop redaction requested before 48-hour minimum retention', [
+                ShopifyLogger::channel()->warning('GDPR: Shop redaction requested before 48-hour minimum retention', [
                     'shop' => $this->shopDomain,
                     'uninstalled_at' => $shop->deleted_at,
                 ]);
@@ -89,7 +89,7 @@ class ShopRedactJob implements ShouldQueue
         }
 
         if ($this->shouldLog('log_gdpr_events')) {
-            Log::info('GDPR: Shop data permanently deleted', [
+            ShopifyLogger::channel()->info('GDPR: Shop data permanently deleted', [
                 'shop' => $this->shopDomain,
                 'shop_id' => $shopId,
             ]);
@@ -128,7 +128,7 @@ class ShopRedactJob implements ShouldQueue
         // Storage::deleteDirectory("shops/{$shop->id}");
 
         if ($this->shouldLog('log_gdpr_events')) {
-            Log::info('GDPR: All shop-related data deleted', [
+            ShopifyLogger::channel()->info('GDPR: All shop-related data deleted', [
                 'shop' => $shop->domain,
                 'shop_id' => $shop->id,
             ]);
@@ -151,7 +151,7 @@ class ShopRedactJob implements ShouldQueue
         // Storage::put("archives/shop_{$archive['shop_id_hash']}.json", json_encode($archive));
 
         if ($this->shouldLog('log_gdpr_events')) {
-            Log::info('GDPR: Shop data archived', [
+            ShopifyLogger::channel()->info('GDPR: Shop data archived', [
                 'shop' => $shop->domain,
             ]);
         }
