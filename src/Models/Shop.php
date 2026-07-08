@@ -70,6 +70,14 @@ class Shop extends Authenticatable
 
         if ($accessToken !== null) {
             $updateData['access_token'] = $accessToken;
+        } else {
+            // Any token from before the uninstall was revoked by Shopify.
+            // Clear it so token exchange runs instead of reusing a dead token.
+            $updateData['access_token'] = null;
+            $updateData['access_token_expires_at'] = null;
+            $updateData['refresh_token'] = null;
+            $updateData['refresh_token_expires_at'] = null;
+            $updateData['access_token_last_refreshed_at'] = null;
         }
 
         $this->update($updateData);

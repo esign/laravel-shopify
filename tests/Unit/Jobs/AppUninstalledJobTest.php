@@ -68,6 +68,26 @@ class AppUninstalledJobTest extends TestCase
     }
 
     /** @test */
+    public function it_sets_the_uninstalled_at_timestamp()
+    {
+        ShopifyLogger::fake();
+
+        $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
+        $this->assertNull($shop->uninstalled_at);
+
+        $job = new AppUninstalledJob(
+            shopDomain: 'test-shop.myshopify.com',
+            webhookData: []
+        );
+
+        $job->handle();
+
+        $shop = $shop->fresh();
+        $this->assertNotNull($shop->uninstalled_at);
+        $this->assertFalse($shop->isInstalled());
+    }
+
+    /** @test */
     public function it_logs_warning_when_shop_not_found()
     {
         $logger = ShopifyLogger::fake();
