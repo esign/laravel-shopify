@@ -114,7 +114,11 @@ trait VerifiesSessionTokens
 
                 if ($shop->trashed()) {
                     $shop->markAsReinstalled(null);
+
+                    ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
+
                     $shop = $shop->fresh();
+                    AppReinstalledEvent::dispatch($shop);
                 }
             }
         }
