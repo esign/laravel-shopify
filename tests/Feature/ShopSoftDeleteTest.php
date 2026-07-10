@@ -41,6 +41,42 @@ class ShopSoftDeleteTest extends TestCase
     }
 
     /** @test */
+    public function it_clears_stale_tokens_when_reinstalled_without_a_new_token()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'shpat_old_token',
+            'refresh_token' => 'old_refresh_token',
+            'access_token_expires_at' => now()->addDay(),
+            'refresh_token_expires_at' => now()->addDays(30),
+            'access_token_last_refreshed_at' => now(),
+        ]);
+        $shop->delete();
+
+        $shop->markAsReinstalled(null);
+
+        $shop = $shop->fresh();
+        $this->assertFalse($shop->trashed());
+        $this->assertNull($shop->access_token);
+        $this->assertNull($shop->access_token_expires_at);
+        $this->assertNull($shop->refresh_token);
+        $this->assertNull($shop->refresh_token_expires_at);
+        $this->assertNull($shop->access_token_last_refreshed_at);
+    }
+
+    /** @test */
+    public function it_keeps_the_new_token_when_reinstalled_with_one()
+    {
+        $shop = $this->createShop();
+        $shop->markAsUninstalled();
+
+        $shop->markAsReinstalled('shpat_new_token');
+
+        $shop = $shop->fresh();
+        $this->assertFalse($shop->trashed());
+        $this->assertEquals('shpat_new_token', $shop->access_token);
+    }
+
+    /** @test */
     public function it_maintains_shop_data_after_soft_delete()
     {
         $shop = $this->createShop([

@@ -9,6 +9,7 @@ use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -82,7 +83,7 @@ trait VerifiesSessionTokens
      */
     protected function loadOrCreateShop(string $shopDomain, string $requestType): Shop
     {
-        $shop = Shop::where('domain', $shopDomain)->first();
+        $shop = Shop::withTrashed()->where('domain', $shopDomain)->first();
 
         if ($shop && $shop->trashed()) {
             // Shop was previously uninstalled, restore it
@@ -98,13 +99,28 @@ trait VerifiesSessionTokens
 
         if (! $shop) {
             // First time installation
-            $shop = Shop::create([
-                'domain' => $shopDomain,
-                'installed_at' => now(),
-            ]);
+            try {
+                $shop = Shop::create([
+                    'domain' => $shopDomain,
+                    'installed_at' => now(),
+                ]);
 
-            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('New shop created', ['shop' => $shopDomain]);
-            AppInstalledEvent::dispatch($shop);
+                ShopifyLogger::log(LogCategory::ShopLifecycle)->info('New shop created', ['shop' => $shopDomain]);
+                AppInstalledEvent::dispatch($shop);
+            } catch (UniqueConstraintViolationException) {
+                // App Bridge fires parallel requests on first load; another
+                // request created the shop between our lookup and insert.
+                $shop = Shop::withTrashed()->where('domain', $shopDomain)->firstOrFail();
+
+                if ($shop->trashed()) {
+                    $shop->markAsReinstalled(null);
+
+                    ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
+
+                    $shop = $shop->fresh();
+                    AppReinstalledEvent::dispatch($shop);
+                }
+            }
         }
 
         return $shop;
