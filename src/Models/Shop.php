@@ -90,9 +90,17 @@ class Shop extends Authenticatable
     {
         $this->restore(); // Restore from soft delete
 
+        // Clear any pre-uninstall tokens: they were revoked by Shopify at
+        // uninstall, so token exchange must run instead of reusing a dead token.
+        // A fresh token is stored afterwards via storeAccessToken().
         $this->update([
             'installed_at' => now(),
             'uninstalled_at' => null, // Clear uninstall timestamp
+            'access_token' => null,
+            'access_token_expires_at' => null,
+            'refresh_token' => null,
+            'refresh_token_expires_at' => null,
+            'access_token_last_refreshed_at' => null,
         ]);
     }
 

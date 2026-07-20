@@ -64,6 +64,7 @@ class AppUninstalledJob implements ShouldQueue
             'refresh_token' => null,
             'refresh_token_expires_at' => null,
             'access_token_last_refreshed_at' => null,
+            'uninstalled_at' => now(),
         ]);
 
         ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop tokens cleared', [

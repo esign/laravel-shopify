@@ -10,6 +10,7 @@ use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Support\ShopifyRequest;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,26 +46,48 @@ trait VerifiesSessionTokens
         $shop = Shop::withTrashed()->byDomain($shopDomain)->first();
 
         if ($shop && $shop->trashed()) {
-            // Shop was previously uninstalled, restore it
-            $shop->markAsReinstalled(); // Access token will be set after token exchange
-
-            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
-
-            AppReinstalledEvent::dispatch($shop);
-
-            return $shop;
+            return $this->restoreShop($shop, $shopDomain);
         }
 
         if (! $shop) {
             // First time installation
-            $shop = Shop::create([
-                'domain' => $shopDomain,
-                'installed_at' => now(),
-            ]);
+            try {
+                $shop = Shop::create([
+                    'domain' => $shopDomain,
+                    'installed_at' => now(),
+                ]);
 
-            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('New shop created', ['shop' => $shopDomain]);
-            AppInstalledEvent::dispatch($shop);
+                ShopifyLogger::log(LogCategory::ShopLifecycle)->info('New shop created', ['shop' => $shopDomain]);
+                AppInstalledEvent::dispatch($shop);
+            } catch (UniqueConstraintViolationException) {
+                // App Bridge fires parallel requests on first load; another
+                // request created the shop between our lookup and insert.
+                $shop = Shop::withTrashed()->byDomain($shopDomain)->firstOrFail();
+
+                if ($shop->trashed()) {
+                    $shop = $this->restoreShop($shop, $shopDomain);
+                }
+            }
         }
+
+        return $shop;
+    }
+
+    /**
+     * Restore a soft-deleted shop and announce the reinstall.
+     *
+     * Single restore path shared by the normal lookup and the parallel-request
+     * recovery branch, so both always dispatch AppReinstalledEvent.
+     */
+    protected function restoreShop(Shop $shop, string $shopDomain): Shop
+    {
+        // markAsReinstalled() clears any pre-uninstall tokens; a fresh one is
+        // obtained via token exchange after this.
+        $shop->markAsReinstalled();
+
+        ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
+
+        AppReinstalledEvent::dispatch($shop);
 
         return $shop;
     }

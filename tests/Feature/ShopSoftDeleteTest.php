@@ -40,6 +40,31 @@ class ShopSoftDeleteTest extends TestCase
     }
 
     /** @test */
+    public function it_clears_stale_tokens_on_reinstall()
+    {
+        // Even if the uninstall webhook was missed and tokens survived, a
+        // reinstall clears them so a fresh token is obtained via token exchange.
+        $shop = $this->createShop([
+            'access_token' => 'shpat_old_token',
+            'refresh_token' => 'old_refresh_token',
+            'access_token_expires_at' => now()->addDay(),
+            'refresh_token_expires_at' => now()->addDays(30),
+            'access_token_last_refreshed_at' => now(),
+        ]);
+        $shop->delete();
+
+        $shop->markAsReinstalled();
+
+        $shop = $shop->fresh();
+        $this->assertFalse($shop->trashed());
+        $this->assertNull($shop->access_token);
+        $this->assertNull($shop->access_token_expires_at);
+        $this->assertNull($shop->refresh_token);
+        $this->assertNull($shop->refresh_token_expires_at);
+        $this->assertNull($shop->access_token_last_refreshed_at);
+    }
+
+    /** @test */
     public function it_maintains_shop_data_after_soft_delete()
     {
         $shop = $this->createShop([
