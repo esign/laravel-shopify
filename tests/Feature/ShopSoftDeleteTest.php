@@ -30,8 +30,7 @@ class ShopSoftDeleteTest extends TestCase
 
         $this->assertTrue($shop->trashed());
 
-        $newToken = 'shpat_reinstall_token_'.bin2hex(random_bytes(16));
-        $shop->markAsReinstalled($newToken);
+        $shop->markAsReinstalled();
 
         $shop = $shop->fresh();
         $this->assertFalse($shop->trashed());

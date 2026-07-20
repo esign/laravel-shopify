@@ -4,6 +4,7 @@ namespace Esign\LaravelShopify\Exceptions;
 
 use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
+use Esign\LaravelShopify\Support\ShopifyResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -32,40 +33,28 @@ class ShopifyAuthenticationExceptionHandler
             'url' => $request->fullUrl(),
         ]);
 
-        // Handle embedded app requests
-        if ($exception->isEmbeddedAppRequest()) {
-            return $this->handleEmbeddedAppFailure($exception, $request);
-        }
-
-        // Handle webhook requests
-        if ($exception->isWebhookRequest()) {
-            return response()->json([
+        return match ($exception->getRequestType()) {
+            'embedded-app' => $this->handleEmbeddedAppFailure($exception, $request),
+            'webhook' => response()->json([
                 'error' => 'Unauthorized',
                 'message' => 'Webhook verification failed',
-            ], 401);
-        }
-
-        // Handle app proxy requests
-        if ($exception->isAppProxyRequest()) {
-            return response()->json([
+            ], 401),
+            'app-proxy' => response()->json([
                 'error' => 'Forbidden',
                 'message' => 'App proxy verification failed',
-            ], 403);
-        }
-
-        // Handle UI extension requests
-        if ($exception->isUIExtensionRequest()) {
-            return response()->json([
+            ], 403),
+            'admin-ui-extension',
+            'pos-ui-extension',
+            'checkout-ui-extension',
+            'customer-account-ui-extension' => response()->json([
                 'error' => 'Unauthorized',
                 'message' => 'Extension verification failed',
-            ], 401);
-        }
-
-        // Default response
-        return response()->json([
-            'error' => 'Unauthorized',
-            'message' => 'Authentication failed',
-        ], 401);
+            ], 401),
+            default => response()->json([
+                'error' => 'Unauthorized',
+                'message' => 'Authentication failed',
+            ], 401),
+        };
     }
 
     /**
@@ -78,10 +67,17 @@ class ShopifyAuthenticationExceptionHandler
     {
         // Log the token refresh failure
         ShopifyLogger::log(LogCategory::TokenLifecycle)->warning('Token refresh required', [
-            'shop' => $exception->shop->domain,
+            'shop' => $exception->shop?->domain ?? 'unknown',
             'url' => $request->fullUrl(),
             'message' => $exception->getMessage(),
         ]);
+
+        // When the library provided a retry response (via the verify result's
+        // newIdTokenResponse), serve it verbatim: App Bridge intercepts it and
+        // retries the request with a fresh session token automatically.
+        if ($exception->response !== null) {
+            return ShopifyResponse::toLaravelResponse($exception->response);
+        }
 
         // For embedded apps (XHR), return JSON with requiresRefresh flag
         // Frontend should catch this and reload the page
@@ -90,7 +86,7 @@ class ShopifyAuthenticationExceptionHandler
                 'error' => 'Token Refresh Required',
                 'message' => $exception->getMessage(),
                 'requiresRefresh' => true,
-                'shop' => $exception->shop->domain,
+                'shop' => $exception->shop?->domain,
             ], 401);
         }
 

@@ -89,41 +89,4 @@ class ShopifyAuthenticationException extends Exception
     {
         return $this->reason;
     }
-
-    /**
-     * Check if this is an embedded app request.
-     */
-    public function isEmbeddedAppRequest(): bool
-    {
-        return $this->requestType === 'embedded-app';
-    }
-
-    /**
-     * Check if this is a webhook request.
-     */
-    public function isWebhookRequest(): bool
-    {
-        return $this->requestType === 'webhook';
-    }
-
-    /**
-     * Check if this is an app proxy request.
-     */
-    public function isAppProxyRequest(): bool
-    {
-        return $this->requestType === 'app-proxy';
-    }
-
-    /**
-     * Check if this is a UI extension request.
-     */
-    public function isUIExtensionRequest(): bool
-    {
-        return in_array($this->requestType, [
-            'admin-ui-extension',
-            'pos-ui-extension',
-            'checkout-ui-extension',
-            'customer-account-ui-extension',
-        ]);
-    }
 }

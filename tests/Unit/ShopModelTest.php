@@ -61,13 +61,11 @@ class ShopModelTest extends TestCase
 
         $this->assertTrue($shop->trashed());
 
-        $newToken = 'shpat_new_token_'.bin2hex(random_bytes(16));
-        $shop->markAsReinstalled($newToken);
+        $shop->markAsReinstalled();
 
         $this->assertFalse($shop->fresh()->trashed());
         $this->assertNotNull($shop->installed_at);
         $this->assertNull($shop->uninstalled_at);
-        $this->assertEquals($newToken, $shop->fresh()->access_token);
     }
 
     /** @test */

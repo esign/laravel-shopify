@@ -8,6 +8,7 @@ use Esign\LaravelShopify\GraphQL\Concerns\HandlesGraphQLErrors;
 use Esign\LaravelShopify\GraphQL\Contracts\Mutation;
 use Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery;
 use Esign\LaravelShopify\GraphQL\Contracts\Query;
+use Esign\LaravelShopify\GraphQL\Exceptions\GraphQLThrottledException;
 use Esign\LaravelShopify\Models\Shop;
 use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
@@ -22,11 +23,9 @@ class Client
 
     public function __construct(
         protected Shop $shop,
+        ?ShopifyApp $shopifyApp = null,
     ) {
-        $this->shopifyApp = new ShopifyApp(
-            clientId: config('shopify.api_key'),
-            clientSecret: config('shopify.api_secret'),
-        );
+        $this->shopifyApp = $shopifyApp ?? app(ShopifyApp::class);
     }
 
     /**
@@ -82,9 +81,9 @@ class Client
      */
     protected function executeGraphQL(string $query, array $variables = []): GQLResult
     {
-        $result = $this->makeGraphQLRequest($query, $variables);
+        $result = $this->retryIfThrottled($this->makeGraphQLRequest($query, $variables), $query, $variables);
 
-        // Check for authentication errors (retriable)
+        // Authentication errors are retriable: refresh the token and retry once.
         if (! $result->ok && $this->isAuthenticationError($result)) {
             ShopifyLogger::log(LogCategory::TokenLifecycle)->info('GraphQL authentication error detected, attempting token refresh', [
                 'shop' => $this->shop->domain,
@@ -92,26 +91,98 @@ class Client
                 'error_detail' => $result->log->detail,
             ]);
 
-            if ($this->attemptTokenRefresh()) {
-                ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token refresh successful, retrying GraphQL request', [
-                    'shop' => $this->shop->domain,
-                ]);
+            if (! $this->attemptTokenRefresh()) {
+                throw $this->tokenRefreshRequired($result);
+            }
 
-                // Retry the request with refreshed token
-                $result = $this->makeGraphQLRequest($query, $variables);
-            } else {
-                // Token refresh failed, throw exception to trigger page reload
-                throw new TokenRefreshRequiredException(
-                    'Token refresh failed. Please reload the page to re-authenticate.',
-                    $this->shop
-                );
+            ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token refresh successful, retrying GraphQL request', [
+                'shop' => $this->shop->domain,
+            ]);
+
+            // Retry with the refreshed token, still honouring throttling.
+            $result = $this->retryIfThrottled($this->makeGraphQLRequest($query, $variables), $query, $variables);
+
+            // Still unauthorized after a successful refresh means the token
+            // could not be recovered server-side (revoked, or the library
+            // reported token_still_valid so nothing actually changed). Hand off
+            // to App Bridge to re-authenticate instead of surfacing a generic
+            // GraphQL error.
+            if (! $result->ok && $this->isAuthenticationError($result)) {
+                throw $this->tokenRefreshRequired($result);
             }
         }
 
-        // Handle all errors (non-auth errors, or auth error after failed refresh)
+        // Handle all remaining errors (non-auth errors, user errors, etc.)
         $this->handleErrors($result);
 
         return $result;
+    }
+
+    /**
+     * Build the exception that triggers App Bridge re-authentication, passing
+     * the library's retry response verbatim when one was provided.
+     */
+    protected function tokenRefreshRequired(GQLResult $result): TokenRefreshRequiredException
+    {
+        return new TokenRefreshRequiredException(
+            'Token refresh failed. Please reload the page to re-authenticate.',
+            $this->shop,
+            $this->invalidTokenResponse() !== null ? $result->response : null,
+        );
+    }
+
+    /**
+     * Retry a request that was throttled by Shopify's cost-based rate
+     * limiting, waiting for the cost bucket to refill between attempts.
+     *
+     * @throws GraphQLThrottledException when retries are exhausted
+     */
+    protected function retryIfThrottled(GQLResult $result, string $query, array $variables): GQLResult
+    {
+        $maxRetries = (int) config('shopify.rate_limiting.max_retries', 2);
+        $attempt = 0;
+
+        while (($throttleInfo = $this->extractThrottleInfo($result)) !== null) {
+            // Never block a web worker on usleep(): only wait-and-retry in
+            // console/queue contexts. In an HTTP request, throw immediately so
+            // the caller can back off at a higher level using throttleStatus.
+            if ($attempt >= $maxRetries || ! $this->canBlockForThrottle()) {
+                throw new GraphQLThrottledException(
+                    "GraphQL request throttled by Shopify after {$attempt} retries.",
+                    $throttleInfo['throttleStatus'],
+                    $throttleInfo['requestedQueryCost'],
+                );
+            }
+
+            $attempt++;
+            $waitSeconds = $this->throttleWaitSeconds($throttleInfo);
+
+            ShopifyLogger::log(LogCategory::RateLimiting)->info('GraphQL request throttled, retrying', [
+                'shop' => $this->shop->domain,
+                'attempt' => $attempt,
+                'wait_seconds' => $waitSeconds,
+                'requested_query_cost' => $throttleInfo['requestedQueryCost'],
+                'throttle_status' => $throttleInfo['throttleStatus'],
+            ]);
+
+            if ($waitSeconds > 0) {
+                usleep((int) ($waitSeconds * 1_000_000));
+            }
+
+            $result = $this->makeGraphQLRequest($query, $variables);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Whether it is safe to block on usleep() while waiting for the throttle
+     * bucket to refill. True only in console/queue contexts; in an HTTP request
+     * blocking a worker for seconds risks exhausting the worker pool.
+     */
+    protected function canBlockForThrottle(): bool
+    {
+        return app()->runningInConsole();
     }
 
     /**
@@ -119,20 +190,32 @@ class Client
      */
     protected function makeGraphQLRequest(string $query, array $variables = []): GQLResult
     {
-        // Extract shop name from domain (e.g., "shop.myshopify.com" -> "shop")
-        // The Shopify library expects just the shop name, not the full domain
-        $shopName = str_replace('.myshopify.com', '', $this->shop->domain);
-
         $result = $this->shopifyApp->adminGraphQLRequest(
             query: $query,
-            shop: $shopName,
+            shop: $this->shop->shopName(),
             accessToken: $this->shop->access_token,
             apiVersion: config('shopify.api_version', '2025-01'),
             variables: $variables ?: null,
-            invalidTokenResponse: null,
+            invalidTokenResponse: $this->invalidTokenResponse(),
         );
 
         return $result;
+    }
+
+    /**
+     * The retry response stored by the verification middleware, if any.
+     *
+     * When passed to adminGraphQLRequest, a 401 comes back as a response that
+     * instructs App Bridge to retry the request with a fresh session token.
+     * Null outside an HTTP context (queued jobs, console).
+     */
+    protected function invalidTokenResponse(): ?array
+    {
+        if (! app()->bound('request')) {
+            return null;
+        }
+
+        return request()->attributes->get('shopify_new_id_token_response');
     }
 
     /**
@@ -141,17 +224,9 @@ class Client
     protected function attemptTokenRefresh(): bool
     {
         try {
-            $tokenRefreshService = app(TokenRefreshService::class);
-            $refreshed = $tokenRefreshService->refreshAccessToken($this->shop);
-
-            if ($refreshed) {
-                // Reload the shop model to get fresh token data
-                $this->shop->refresh();
-
-                return true;
-            }
-
-            return false;
+            // The service updates this same shop instance in place, so no
+            // reload is needed after a successful refresh.
+            return app(TokenRefreshService::class)->refreshAccessToken($this->shop);
         } catch (\Exception $e) {
             ShopifyLogger::log(LogCategory::TokenLifecycle)->error('Token refresh attempt failed', [
                 'shop' => $this->shop->domain,
@@ -164,32 +239,12 @@ class Client
 
     /**
      * Check if the GQLResult indicates an authentication error.
+     *
+     * The library returns exactly one code for authentication failures.
      */
     protected function isAuthenticationError(GQLResult $result): bool
     {
-        // Check if request failed
-        if ($result->ok) {
-            return false;
-        }
-
-        // Check for auth-related error codes
-        $authErrorCodes = [
-            'unauthorized',
-            'invalid_access_token',
-            'invalid_token',
-            'token_expired',
-        ];
-
-        if (in_array($result->log->code, $authErrorCodes)) {
-            return true;
-        }
-
-        // Also check HTTP status code
-        if ($result->response && $result->response->status === 401) {
-            return true;
-        }
-
-        return false;
+        return ! $result->ok && $result->log->code === 'unauthorized';
     }
 
     /**

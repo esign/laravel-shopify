@@ -28,7 +28,7 @@ class WebhookController
 
         // Find shop (include soft-deleted for uninstall webhook)
         $shopModel = Shop::withTrashed()
-            ->where('domain', $shop)
+            ->byDomain($shop)
             ->first();
 
         if (! $shopModel) {

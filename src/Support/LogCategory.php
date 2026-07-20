@@ -10,4 +10,5 @@ enum LogCategory: string
     case GdprEvents = 'log_gdpr_events';
     case GraphqlQueries = 'log_graphql_queries';
     case GraphqlMutations = 'log_graphql_mutations';
+    case RateLimiting = 'log_rate_limiting';
 }

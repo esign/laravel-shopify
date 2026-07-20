@@ -9,15 +9,16 @@ A modern Laravel package for building **embedded Shopify apps** using **session 
 - **Session Token Authentication** - Modern token exchange flow (no OAuth callbacks needed)
 - **Shopify Managed Installation** - Scopes managed entirely by Shopify CLI via `shopify.app.toml`
 - **Shop Model** - Encrypted tokens, soft deletes, reinstallation support
-- **GraphQL Client** - Type-safe queries/mutations with automatic error handling and logging
+- **GraphQL Client** - Type-safe queries/mutations with automatic token refresh, rate-limit (throttle) handling, and logging
 - **Webhook System** - HMAC verification, job dispatch with queue routing, built-in GDPR handlers
 - **8 Middleware Types** - Embedded app, webhooks, App Proxy, UI extensions, Flow actions
+- **Configurable Routes** - Move or disable any package route to avoid conflicts with your app
 - **Multi-Shop Ready** - Single database, per-shop authentication
 
 ## Requirements
 
 - PHP 8.1+
-- Laravel 11+ or 12+
+- Laravel 11, 12, or 13
 - Shopify CLI 3.x+ (for deployment)
 
 ## Installation
@@ -38,7 +39,7 @@ php artisan migrate
 This publishes:
 - `config/shopify.php` - Main configuration
 - `database/migrations/` - Shops table
-- `resources/views/vendor/shopify/` - Blade templates (app.blade.php, auth-error.blade.php, token-refresh.blade.php)
+- `resources/views/vendor/shopify/` - Blade templates (app.blade.php, auth-error.blade.php)
 
 ### 3. Configure Environment
 
@@ -47,10 +48,29 @@ Add to your `.env`:
 ```env
 SHOPIFY_API_KEY=your_api_key_from_shopify_partner_dashboard
 SHOPIFY_API_SECRET=your_api_secret_from_shopify_partner_dashboard
-SHOPIFY_API_VERSION=2025-01
+SHOPIFY_API_VERSION=2026-01
 ```
 
 **Important:** Do NOT set `SHOPIFY_SCOPES` in your `.env` file. Scopes are managed by Shopify CLI via your `shopify.app.toml` file.
+
+When [rotating your client secret](https://shopify.dev/docs/apps/build/authentication-authorization/client-secrets/rotate-revoke-client-credentials), set the previous secret as `SHOPIFY_OLD_API_SECRET` — requests signed with either secret are accepted until the rotation completes, after which you can remove it.
+
+### 4. Configure Shopify CLI (`shopify.web.toml`)
+
+The Shopify CLI needs a `shopify.web.toml` next to your `shopify.app.toml` so `shopify app dev` knows how to serve your Laravel app:
+
+```toml
+name = "My App"
+roles = ["frontend", "backend"]
+webhooks_path = "/webhooks/app/uninstalled"
+
+[commands]
+dev = "php artisan serve"
+```
+
+- `roles = ["frontend", "backend"]` is required for embedded apps — without it the CLI won't proxy your app correctly.
+- The CLI provides `PORT` and `SERVER_PORT` environment variables; Laravel's `php artisan serve` picks up `SERVER_PORT` automatically, so no port flag is needed.
+- `webhooks_path` should match the package's webhook route (`/webhooks/{topic}`, see the Routes section if you changed the prefix).
 
 ## How It Works
 
@@ -88,11 +108,40 @@ Shop authenticated via Auth::user()
 
 The package automatically registers these routes:
 
-- `GET /shopify/auth/token-refresh` - Session token refresh bounce page
-- `GET /shopify/auth/error` - Error handling
-- `GET /` - Embedded app home (requires session token authentication)
+- `GET /shopify/auth/token-refresh` - Session token refresh bounce page (`shopify.auth.token-refresh`)
+- `GET /shopify/auth/error` - Error handling (`shopify.auth.error`)
+- `GET /` - Embedded app home, requires session token authentication (`shopify.app.home`)
+- `POST /webhooks/{topic}` - Webhook handling (`shopify.webhooks.handle`)
 
 **There are no OAuth routes** (`/auth/install`, `/auth/callback`) because Shopify manages installation automatically.
+
+#### Overriding or disabling package routes
+
+Every route can be relocated or disabled via the `routes` block in `config/shopify.php` — useful when your application already uses `/` for something else:
+
+```php
+'routes' => [
+    'enabled' => true,          // false = the package registers no routes at all
+    'app_home' => true,         // false = skip only the "GET /" app home route
+    'app_home_path' => '/',     // relocate the app home, e.g. '/shopify-app'
+    'prefix' => 'shopify',      // prefix for the auth routes
+    'webhooks_prefix' => 'webhooks',
+],
+```
+
+If you disable routes and register your own, point them at the package controllers and **keep the route names intact** — the token refresh redirect resolves `route('shopify.auth.token-refresh')` internally:
+
+```php
+use Esign\LaravelShopify\Http\Controllers\AppController;
+use Esign\LaravelShopify\Http\Controllers\AuthController;
+
+Route::get('/shopify/auth/token-refresh', [AuthController::class, 'tokenRefresh'])
+    ->name('shopify.auth.token-refresh');
+
+Route::middleware('shopify.verify.embedded-app')
+    ->get('/my-app', [AppController::class, 'home'])
+    ->name('shopify.app.home');
+```
 
 ## Scope Management
 
@@ -158,6 +207,12 @@ With Shopify Managed Installation:
 
 ## Quick Start
 
+A query/mutation is a small class implementing a contract with three methods:
+`query()` (the GraphQL string), `variables()` (the variables array), and
+`mapFromResponse()` (turn the response into whatever you want to return).
+`mapFromResponse()` receives a `Shopify\App\Types\GQLResult`; read the parsed
+payload from `$response->data`.
+
 #### Creating a Query
 
 ```php
@@ -166,12 +221,13 @@ With Shopify Managed Installation:
 namespace App\GraphQL\Queries;
 
 use Esign\LaravelShopify\GraphQL\Contracts\Query;
+use Shopify\App\Types\GQLResult;
 
 class GetProductQuery implements Query
 {
     public function __construct(private string $productId) {}
-    
-    public function getQuery(): string
+
+    public function query(): string
     {
         return <<<'GQL'
             query getProduct($id: ID!) {
@@ -179,28 +235,19 @@ class GetProductQuery implements Query
                     id
                     title
                     description
-                    variants(first: 10) {
-                        edges {
-                            node {
-                                id
-                                price
-                                sku
-                            }
-                        }
-                    }
                 }
             }
         GQL;
     }
-    
-    public function getVariables(): array
+
+    public function variables(): array
     {
         return ['id' => $this->productId];
     }
-    
-    public function mapFromResponse(array $response): mixed
+
+    public function mapFromResponse(GQLResult $response): mixed
     {
-        return $response['data']['product'];
+        return $response->data['product'];
     }
 }
 ```
@@ -211,7 +258,7 @@ class GetProductQuery implements Query
 use Esign\LaravelShopify\Facades\Shopify;
 use App\GraphQL\Queries\GetProductQuery;
 
-// In a controller or job
+// In a controller or job (a shop must be authenticated via Auth::user())
 $product = Shopify::query(new GetProductQuery('gid://shopify/Product/123'));
 ```
 
@@ -223,6 +270,7 @@ $product = Shopify::query(new GetProductQuery('gid://shopify/Product/123'));
 namespace App\GraphQL\Mutations;
 
 use Esign\LaravelShopify\GraphQL\Contracts\Mutation;
+use Shopify\App\Types\GQLResult;
 
 class CreateProductMutation implements Mutation
 {
@@ -230,43 +278,44 @@ class CreateProductMutation implements Mutation
         private string $title,
         private string $description
     ) {}
-    
-    public function getQuery(): string
+
+    public function query(): string
     {
         return <<<'GQL'
             mutation createProduct($input: ProductInput!) {
                 productCreate(input: $input) {
-                    product {
-                        id
-                        title
-                    }
-                    userErrors {
-                        field
-                        message
-                    }
+                    product { id title }
+                    userErrors { field message }
                 }
             }
         GQL;
     }
-    
-    public function getVariables(): array
+
+    public function variables(): array
     {
         return [
             'input' => [
                 'title' => $this->title,
-                'description' => $this->description,
+                'descriptionHtml' => $this->description,
             ],
         ];
     }
-    
-    public function mapFromResponse(array $response): mixed
+
+    public function mapFromResponse(GQLResult $response): mixed
     {
-        return $response['data']['productCreate']['product'];
+        return $response->data['productCreate']['product'];
     }
 }
 ```
 
+`userErrors` (validation failures returned by Shopify) are detected
+automatically and thrown as a `GraphQLUserErrorException`.
+
 #### Paginated Queries
+
+A `PaginatedQuery` fetches every page for you. Track the cursor on the object:
+`hasNextPage()` reads the next cursor, and `variables()` sends it back on the
+next request.
 
 ```php
 <?php
@@ -274,117 +323,66 @@ class CreateProductMutation implements Mutation
 namespace App\GraphQL\Queries;
 
 use Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery;
+use Shopify\App\Types\GQLResult;
 
 class GetAllProductsQuery implements PaginatedQuery
 {
-    public function getQuery(): string
+    private ?string $cursor = null;
+
+    public function query(): string
     {
         return <<<'GQL'
             query getAllProducts($cursor: String) {
                 products(first: 50, after: $cursor) {
-                    edges {
-                        node {
-                            id
-                            title
-                        }
-                        cursor
-                    }
-                    pageInfo {
-                        hasNextPage
-                        endCursor
-                    }
+                    edges { node { id title } }
+                    pageInfo { hasNextPage endCursor }
                 }
             }
         GQL;
     }
-    
-    public function getVariables(): array
+
+    public function variables(): array
     {
-        return [];
+        return ['cursor' => $this->cursor];
     }
-    
-    public function mapFromResponse(array $response): array
+
+    // Must return an array; every page's array is merged into the final result.
+    public function mapFromResponse(GQLResult $response): array
     {
-        return $response['data']['products']['edges'];
+        return $response->data['products']['edges'];
     }
-    
-    public function hasNextPage(array $response): bool
+
+    public function hasNextPage(GQLResult $response): bool
     {
-        return $response['data']['products']['pageInfo']['hasNextPage'];
-    }
-    
-    public function getNextCursor(array $response): ?string
-    {
-        return $response['data']['products']['pageInfo']['endCursor'];
+        $pageInfo = $response->data['products']['pageInfo'];
+        $this->cursor = $pageInfo['endCursor'] ?? null;
+
+        return $pageInfo['hasNextPage'] ?? false;
     }
 }
 ```
 
 ```php
-// Execute paginated query (automatically fetches all pages)
+// Executes every page and returns the merged array of edges
 $allProducts = Shopify::queryPaginated(new GetAllProductsQuery());
 ```
 
+#### Automatic retries
+
+The client handles two failure modes for you:
+
+- **Expired access token** - refreshed automatically, then the request is retried.
+- **Rate limiting** - Shopify throttles GraphQL by query cost. In queue/console
+  contexts the client waits for the cost bucket to refill and retries (tunable via
+  `shopify.rate_limiting`); in a web request it throws `GraphQLThrottledException`
+  immediately (carrying the throttle status) so a worker is never blocked.
+
 ## DTOs and Input Objects
 
-This package provides a comprehensive set of **Data Transfer Objects (DTOs)** and **Input objects** for working with Shopify entities. All classes are built using [Spatie Laravel Data](https://github.com/spatie/laravel-data) for type safety, validation, and extensibility.
+Typed **Data Transfer Objects (DTOs)**, **Input objects**, and **Enums** for Shopify entities live in the optional companion package [`esign/shopify-data`](https://github.com/esign/shopify-data), built on [Spatie Laravel Data](https://github.com/spatie/laravel-data). Its releases track Shopify Admin API versions (e.g. `2026.07.x` for API `2026-07`), so you can pin the release line matching the `api_version` your app uses:
 
-### Available Objects
-
-The package includes DTOs and Input objects for common Shopify entities:
-
-**Main DTOs** - Represent core Shopify resources like Orders, Customers, Products, Metafields, Metaobjects, and Fulfillments. These include all relevant fields and nested objects.
-
-**Supporting DTOs** - Represent commonly used nested objects such as MailingAddress, MoneyBag, MoneyV2, Weight, LineItem, ShippingLine, TaxLine, DiscountAllocation, and ProductVariant.
-
-**Input Objects** - Used in GraphQL mutations to create or update Shopify resources. Includes Input objects for Orders, Customers, Products, Metafields, Metaobjects, Fulfillments, and their supporting types.
-
-All objects follow Shopify's GraphQL schema naming conventions exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`) and use camelCase for properties.
-
-### Extensibility
-
-All DTOs and Input objects are designed to be **extended and overwritten** in your Shopify apps. This allows you to:
-
-- Add custom properties for store-specific needs
-- Override methods for custom transformations
-- Maintain compatibility with the base package while adding app-specific logic
-
-**Example: Extending OrderDto**
-
-```php
-<?php
-
-namespace App\Shopify\DTOs;
-
-use Esign\LaravelShopify\DTOs\OrderDto;
-
-class CustomOrderDto extends OrderDto
-{
-    public function __construct(
-        // Base OrderDto properties
-        ?string $id = null,
-        ?string $name = null,
-        // ... other base properties
-        
-        // Your custom properties
-        public ?string $customField = null,
-        public ?array $customMetadata = null,
-    ) {
-        parent::__construct(
-            id: $id,
-            name: $name,
-            // ... pass other base properties
-        );
-    }
-    
-    // Override methods if needed
-    public function toArray(): array
-    {
-        $data = parent::toArray();
-        $data['custom_field'] = $this->customField;
-        return $data;
-    }
-}
+```bash
+composer require esign/shopify-data
 ```
 
 **Example: Using Input Objects in Mutations**
@@ -392,8 +390,8 @@ class CustomOrderDto extends OrderDto
 ```php
 <?php
 
-use Esign\LaravelShopify\Inputs\CustomerInput;
-use Esign\LaravelShopify\Inputs\MailingAddressInput;
+use Esign\ShopifyData\Inputs\CustomerInput;
+use Esign\ShopifyData\Inputs\MailingAddressInput;
 
 $customerInput = new CustomerInput(
     email: 'customer@example.com',
@@ -412,11 +410,22 @@ $customerInput = new CustomerInput(
 
 // Use in your mutation
 $variables = [
-    'input' => $customerInput->toArray(),
+    'input' => $customerInput->toArray(), // null properties are omitted
 ];
 ```
 
-All objects use **camelCase** naming and follow Shopify's GraphQL schema exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`).
+**Example: Mapping a query response to a DTO**
+
+```php
+use Esign\ShopifyData\DTOs\ProductDto;
+
+public function mapFromResponse(GQLResult $response): ProductDto
+{
+    return ProductDto::from($response->data['product']);
+}
+```
+
+All objects use **camelCase** naming, follow Shopify's GraphQL schema exactly (e.g., `MailingAddress` not `Address`, `MoneyBag` not `Money`), and can be extended in your app for store-specific needs. See the `esign/shopify-data` README for the full catalogue.
 
 ### Webhooks
 
@@ -581,23 +590,34 @@ Event::listen(AppUninstalledEvent::class, function (AppUninstalledEvent $event) 
 
 ### GDPR Compliance
 
-Schedule cleanup of uninstalled shops:
+The three mandatory GDPR webhooks (`customers/data_request`, `customers/redact`,
+`shop/redact`) are pre-registered in `config/shopify.php`. The built-in jobs
+**only log the request** — the package cannot know what customer data your app
+stores, so you must implement the actual collection/deletion.
+
+To do so, write your own job (see [Add Custom Webhook Handlers](#3-add-custom-webhook-handlers))
+and point the config at it instead of the built-in one:
 
 ```php
-// In app/Console/Kernel.php
-protected function schedule(Schedule $schedule)
-{
-    // Delete shops soft-deleted 90+ days ago
-    $schedule->command('shopify:cleanup-uninstalled-shops --days=90 --force')
-        ->daily();
-}
+// config/shopify.php
+'webhooks' => [
+    'routes' => [
+        'customers/redact' => [
+            'job' => \App\Jobs\Shopify\CustomersRedactJob::class,
+            'queue' => 'gdpr',
+        ],
+        // ...same for customers/data_request and shop/redact
+    ],
+],
 ```
 
-Or run manually:
+Your job receives `public string $shopDomain` and `public array $webhookData`
+in its constructor. For `customers/data_request` you have 30 days to return the
+data; for `customers/redact` delete the customer's PII.
 
-```bash
-php artisan shopify:cleanup-uninstalled-shops --days=90
-```
+For `shop/redact` (sent ~48h after uninstall) the built-in `ShopRedactJob`
+already permanently deletes the soft-deleted shop record, so you only need your
+own handler if you store additional shop data to erase.
 
 ## Middleware
 
@@ -653,9 +673,9 @@ if ($shop->isInstalled()) {
 // Mark as uninstalled (soft delete)
 $shop->markAsUninstalled();
 
-// Mark as reinstalled (restore + update token)
-$newAccessToken = '...'; // Get new token via token exchange
-$shop->markAsReinstalled($newAccessToken);
+// Mark as reinstalled (restore from soft delete); the access token is set
+// separately via token exchange on the next embedded-app request.
+$shop->markAsReinstalled();
 
 // Access token (encrypted in database)
 $token = $shop->access_token;
@@ -667,13 +687,21 @@ Control what gets logged in `config/shopify.php`:
 
 ```php
 'logging' => [
-    'enabled' => true,
+    'enabled' => true,          // master switch — false disables all package logging
     'channel' => 'stack',
-    'log_queries' => true,      // Log all GraphQL queries
-    'log_mutations' => true,    // Log all GraphQL mutations
-    'log_webhooks' => true,     // Log webhook dispatch
+
+    // Per-category toggles (only apply when 'enabled' is true)
+    'log_graphql_queries' => true,
+    'log_graphql_mutations' => true,
+    'log_webhooks' => true,
+    'log_token_lifecycle' => true,
+    'log_shop_lifecycle' => true,
+    'log_gdpr_events' => true,
+    'log_rate_limiting' => true,
 ],
 ```
+
+Each toggle also has an env override (e.g. `SHOPIFY_LOG_GRAPHQL_QUERIES=false`).
 
 ## Testing
 
@@ -683,10 +711,10 @@ Run the test suite:
 composer test
 ```
 
-Run code style checks:
+Format the code with Pint:
 
 ```bash
-composer pint
+composer format
 ```
 
 ## License

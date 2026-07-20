@@ -16,7 +16,7 @@ class VerifyAppProxyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->middleware = new VerifyAppProxy;
+        $this->middleware = app(VerifyAppProxy::class);
     }
 
     /** @test */

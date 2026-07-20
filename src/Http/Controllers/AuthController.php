@@ -2,7 +2,11 @@
 
 namespace Esign\LaravelShopify\Http\Controllers;
 
+use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\ShopifyRequest;
+use Esign\LaravelShopify\Support\ShopifyResponse;
 use Illuminate\Http\Request;
+use Shopify\App\ShopifyApp;
 
 /**
  * Simplified auth controller for embedded apps using session tokens.
@@ -11,31 +15,41 @@ use Illuminate\Http\Request;
  */
 class AuthController
 {
+    public function __construct(
+        protected ShopifyApp $shopifyApp,
+    ) {}
+
     /**
      * Token refresh bounce page.
      *
-     * This page loads App Bridge to obtain a fresh session token,
-     * then redirects back to the original path with the token in the header.
+     * Serves the official library's patch-id-token response: a minimal App
+     * Bridge page that obtains a fresh session token and redirects back to
+     * the original path (via the shopify-reload query parameter), with the
+     * required CSP and preload headers included.
      *
      * GET /shopify/auth/token-refresh?shop=...&host=...&shopify-reload=...
      */
     public function tokenRefresh(Request $request)
     {
-        $shop = $request->query('shop');
-        $host = $request->query('host');
-        $reloadPath = $request->query('shopify-reload', '/');
-
-        // Validate shop parameter
-        if (! $shop || ! $this->isValidShopDomain($shop)) {
-            return $this->error($request);
+        // Guard the untrusted shop parameter before it reaches the library:
+        // appHomePatchIdToken interpolates it into the CSP frame-ancestors
+        // header (and only checks non-empty), so an unvalidated value would
+        // let an attacker control who may frame this page.
+        if (! Shop::isValidDomain($request->query('shop'))) {
+            return $this->error($request, 400);
         }
 
-        return view('shopify::token-refresh', [
-            'shop' => $shop,
-            'host' => $host,
-            'reloadPath' => $reloadPath,
-            'apiKey' => config('shopify.api_key'),
-        ]);
+        $result = $this->shopifyApp->appHomePatchIdToken(
+            ShopifyRequest::fromLaravelRequest($request)
+        );
+
+        if (! $result->ok) {
+            // Preserve the library's intended status (e.g. 400/500) instead of
+            // masking the failure as a 200 response.
+            return $this->error($request, $result->response->status ?: 400);
+        }
+
+        return ShopifyResponse::toLaravelResponse($result->response);
     }
 
     /**
@@ -43,23 +57,15 @@ class AuthController
      *
      * GET /shopify/auth/error?shop=...
      */
-    public function error(Request $request)
+    public function error(Request $request, int $status = 401)
     {
-        return view('shopify::auth-error', [
+        $shop = $request->query('shop');
+
+        return response()->view('shopify::auth-error', [
             'error' => 'Authentication failed. Please try reinstalling the app.',
-            'shop' => $request->query('shop'),
-        ]);
-    }
-
-    /**
-     * Validate shop domain format.
-     */
-    protected function isValidShopDomain(?string $shop): bool
-    {
-        if (! $shop) {
-            return false;
-        }
-
-        return preg_match('/^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/', $shop) === 1;
+            // Only pass a validated domain: the view renders it into an
+            // outbound https://{shop}/admin/apps link.
+            'shop' => Shop::isValidDomain($shop) ? $shop : null,
+        ], $status);
     }
 }

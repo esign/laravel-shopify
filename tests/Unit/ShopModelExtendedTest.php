@@ -133,19 +133,20 @@ class ShopModelExtendedTest extends TestCase
     }
 
     /** @test */
-    public function it_marks_shop_as_reinstalled_with_new_token()
+    public function it_leaves_the_access_token_untouched_on_reinstall()
     {
+        // The access token is set separately via token exchange after reinstall;
+        // markAsReinstalled() only restores and clears the uninstall timestamps.
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
-            'access_token' => 'old_token',
+            'access_token' => 'existing_token',
         ]);
         $shop->delete();
 
-        $newToken = 'shpat_new_token_'.bin2hex(random_bytes(16));
-        $shop->markAsReinstalled($newToken);
+        $shop->markAsReinstalled();
 
         $this->assertFalse($shop->fresh()->trashed());
-        $this->assertEquals($newToken, $shop->fresh()->access_token);
+        $this->assertSame('existing_token', $shop->fresh()->access_token);
     }
 
     /** @test */

@@ -3,7 +3,7 @@
 use Esign\LaravelShopify\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('webhooks')
+Route::prefix(config('shopify.routes.webhooks_prefix', 'webhooks'))
     ->middleware(['shopify.verify.webhook'])
     ->group(function () {
         // Single route handles all webhook topics

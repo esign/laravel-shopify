@@ -547,7 +547,7 @@ class GraphQLClientTest extends TestCase
     }
 
     /** @test */
-    public function it_refreshes_token_when_401_status_code_returned()
+    public function it_refreshes_token_when_unauthorized_code_returned_for_401()
     {
         $shop = $this->createShop([
             'access_token' => 'expired_token',
@@ -579,7 +579,7 @@ class GraphQLClientTest extends TestCase
             shop: null,
             data: null,
             extensions: null,
-            log: new Log('http_error', 'HTTP 401'),
+            log: new Log('unauthorized', 'Access token is invalid or has been revoked.'),
             httpLogs: [],
             response: new ResponseInfo(status: 401, body: '', headers: []),
         );
@@ -834,7 +834,7 @@ class GraphQLClientTest extends TestCase
                 return [];
             }
 
-            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): mixed
+            public function mapFromResponse(\Shopify\App\Types\GQLResult $response): array
             {
                 return $response->data['products']['edges'];
             }
