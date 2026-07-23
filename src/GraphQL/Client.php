@@ -147,8 +147,12 @@ class Client
             // console/queue contexts. In an HTTP request, throw immediately so
             // the caller can back off at a higher level using throttleStatus.
             if ($attempt >= $maxRetries || ! $this->canBlockForThrottle()) {
+                $requestedCost = $throttleInfo['requestedQueryCost'] ?? 'unknown';
+                $pointsAvailable = $throttleInfo['throttleStatus']['currentlyAvailable'] ?? 'unknown';
+
                 throw new GraphQLThrottledException(
-                    "GraphQL request throttled by Shopify after {$attempt} retries.",
+                    "GraphQL request throttled by Shopify after {$attempt} retries. "
+                        ."Requested query cost: {$requestedCost}, points available: {$pointsAvailable}.",
                     $throttleInfo['throttleStatus'],
                     $throttleInfo['requestedQueryCost'],
                 );
