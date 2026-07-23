@@ -118,6 +118,18 @@ The `PaginatedQuery` contract now declares `mapFromResponse(): array` (it was
 `mixed`), so each page can be merged into the final result. Update custom
 paginated queries to return an array of items.
 
+## 9. `LogCategory` moved to the `Enums` namespace
+
+The `LogCategory` enum moved out of `Support` into `Enums`. Update any imports
+(e.g. in custom logging filters or when calling `ShopifyLogger::log()`):
+
+```diff
+- use Esign\LaravelShopify\Support\LogCategory;
++ use Esign\LaravelShopify\Enums\LogCategory;
+```
+
+The cases and their string values are unchanged.
+
 ## What you get in return
 
 - Automatic GraphQL rate-limit (throttle) handling with configurable retries.
