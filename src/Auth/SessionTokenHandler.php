@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\Auth;
 
-use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 

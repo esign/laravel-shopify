@@ -2,9 +2,9 @@
 
 namespace Esign\LaravelShopify\Jobs;
 
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Events\AppUninstalledEvent;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

@@ -3,6 +3,7 @@
 namespace Esign\LaravelShopify\GraphQL;
 
 use Esign\LaravelShopify\Auth\TokenRefreshService;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Exceptions\TokenRefreshRequiredException;
 use Esign\LaravelShopify\GraphQL\Concerns\HandlesGraphQLErrors;
 use Esign\LaravelShopify\GraphQL\Contracts\Mutation;
@@ -10,7 +11,6 @@ use Esign\LaravelShopify\GraphQL\Contracts\PaginatedQuery;
 use Esign\LaravelShopify\GraphQL\Contracts\Query;
 use Esign\LaravelShopify\GraphQL\Exceptions\GraphQLThrottledException;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 use Shopify\App\Types\GQLResult;

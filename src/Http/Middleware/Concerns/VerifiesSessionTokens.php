@@ -3,11 +3,11 @@
 namespace Esign\LaravelShopify\Http\Middleware\Concerns;
 
 use Esign\LaravelShopify\Auth\SessionTokenHandler;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Events\AppInstalledEvent;
 use Esign\LaravelShopify\Events\AppReinstalledEvent;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Support\ShopifyRequest;
 use Illuminate\Database\UniqueConstraintViolationException;

@@ -2,6 +2,7 @@
 
 namespace Esign\LaravelShopify\Support;
 
+use Esign\LaravelShopify\Enums\LogCategory;
 use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;

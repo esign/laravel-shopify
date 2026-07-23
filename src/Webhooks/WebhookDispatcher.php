@@ -2,8 +2,8 @@
 
 namespace Esign\LaravelShopify\Webhooks;
 
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 
 class WebhookDispatcher

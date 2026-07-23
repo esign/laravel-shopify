@@ -1,6 +1,6 @@
 <?php
 
-namespace Esign\LaravelShopify\Support;
+namespace Esign\LaravelShopify\Enums;
 
 enum LogCategory: string
 {

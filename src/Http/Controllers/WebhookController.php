@@ -2,8 +2,8 @@
 
 namespace Esign\LaravelShopify\Http\Controllers;
 
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Webhooks\WebhookDispatcher;
 use Illuminate\Http\Request;

@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\Exceptions;
 
-use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Support\ShopifyResponse;
 use Illuminate\Http\Request;
