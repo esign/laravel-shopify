@@ -12,9 +12,12 @@ use Illuminate\Support\Facades\Route;
 | These routes handle session token authentication for embedded Shopify apps.
 | No OAuth flow needed - Shopify manages installation via shopify.app.toml.
 |
+| Paths are configurable via the "shopify.routes" config block; route names
+| are stable so overrides and redirects keep working.
+|
 */
 
-Route::prefix('shopify')
+Route::prefix(config('shopify.routes.prefix', 'shopify'))
     ->name('shopify.')
     ->group(function () {
 
@@ -28,8 +31,10 @@ Route::prefix('shopify')
     });
 
 // Embedded App Home (requires session token authentication)
-Route::middleware(['shopify.verify.embedded-app'])
-    ->group(function () {
-        Route::get('/', [AppController::class, 'home'])
-            ->name('app.home');
-    });
+if (config('shopify.routes.app_home', true)) {
+    Route::middleware(['shopify.verify.embedded-app'])
+        ->group(function () {
+            Route::get(config('shopify.routes.app_home_path', '/'), [AppController::class, 'home'])
+                ->name('shopify.app.home');
+        });
+}

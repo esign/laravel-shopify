@@ -16,7 +16,7 @@ class VerifyWebhookTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->middleware = new VerifyWebhook;
+        $this->middleware = app(VerifyWebhook::class);
     }
 
     /** @test */
@@ -121,8 +121,10 @@ class VerifyWebhookTest extends TestCase
     }
 
     /** @test */
-    public function it_rejects_webhook_for_non_existent_shop()
+    public function it_allows_webhook_for_non_existent_shop_without_authentication()
     {
+        // Unknown shops are not rejected at the middleware; the controller
+        // logs and ignores them. HMAC has already been verified.
         $data = json_encode(['id' => 123, 'event' => 'test']);
         $hmac = $this->generateWebhookHmac($data);
 
@@ -132,11 +134,38 @@ class VerifyWebhookTest extends TestCase
             'HTTP_X_SHOPIFY_TOPIC' => 'orders/create',
         ], $data);
 
-        $this->expectException(ShopifyAuthenticationException::class);
-        $this->expectExceptionMessage('Shop not found');
-
-        $this->middleware->handle($request, function ($req) {
+        $response = $this->middleware->handle($request, function ($req) {
             return response('OK');
         });
+
+        $this->assertEquals('OK', $response->getContent());
+        $this->assertNull(Auth::user());
+    }
+
+    /** @test */
+    public function it_authenticates_soft_deleted_shop_for_gdpr_webhooks()
+    {
+        // Mandatory GDPR webhooks (shop/redact, customers/redact) arrive up to
+        // 48h after uninstall, when the shop is soft-deleted. They must still
+        // resolve to the shop rather than being rejected.
+        $shop = $this->createShop(['domain' => 'test-shop.myshopify.com']);
+        $shop->delete(); // soft delete (uninstalled)
+
+        $data = json_encode(['shop_id' => 123]);
+        $hmac = $this->generateWebhookHmac($data);
+
+        $request = Request::create('/webhooks/shop/redact', 'POST', [], [], [], [
+            'HTTP_X_SHOPIFY_HMAC_SHA256' => $hmac,
+            'HTTP_X_SHOPIFY_SHOP_DOMAIN' => 'test-shop.myshopify.com',
+            'HTTP_X_SHOPIFY_TOPIC' => 'shop/redact',
+        ], $data);
+
+        $response = $this->middleware->handle($request, function ($req) {
+            return response('OK');
+        });
+
+        $this->assertEquals('OK', $response->getContent());
+        $this->assertInstanceOf(Shop::class, Auth::user());
+        $this->assertEquals('test-shop.myshopify.com', Auth::user()->domain);
     }
 }

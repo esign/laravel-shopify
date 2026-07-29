@@ -5,43 +5,36 @@ namespace Esign\LaravelShopify\Http\Middleware;
 use Closure;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Http\Middleware\Concerns\VerifiesSessionTokens;
-use Esign\LaravelShopify\Support\ShopifyAppFactory;
+use Esign\LaravelShopify\Models\Shop;
+use Esign\LaravelShopify\Support\ShopifyRequest;
 use Illuminate\Http\Request;
+use Shopify\App\ShopifyApp;
 
 /**
  * Middleware for verifying webhook requests.
  *
  * This middleware:
  * 1. Validates HMAC signature using official shopify/shopify-app-php package
- * 2. Loads shop from database
- * 3. Sets authenticated shop
- *
- * GUARANTEE: After this middleware, Auth::user() will return a Shop model
- * (except for app/uninstalled webhook which may not have a shop).
+ * 2. Resolves the shop (including soft-deleted shops, since GDPR and
+ *    uninstall webhooks legitimately arrive after the shop is uninstalled)
+ * 3. Sets the authenticated shop when one is found
  */
 class VerifyWebhook
 {
     use VerifiesSessionTokens;
 
+    public function __construct(
+        protected ShopifyApp $shopifyApp,
+    ) {}
+
     public function handle(Request $request, Closure $next)
     {
-        $webhookTopic = $request->header('X-Shopify-Topic');
         $requestType = 'webhook';
 
         // Verify webhook using official package
-        $shopifyApp = ShopifyAppFactory::make();
-
-        $result = $shopifyApp->verifyWebhookReq([
-            'method' => $request->method(),
-            'headers' => $this->normalizeHeaders($request->headers->all()),
-            'body' => $request->getContent(),
-        ]);
+        $result = $this->shopifyApp->verifyWebhookReq(ShopifyRequest::fromLaravelRequest($request));
 
         if (! $result->ok) {
-            $this->logVerificationFailure('webhook', $result->log->detail, [
-                'code' => $result->log->code,
-            ]);
-
             throw new ShopifyAuthenticationException(
                 $requestType,
                 $result->log->detail,
@@ -49,46 +42,18 @@ class VerifyWebhook
             );
         }
 
-        // Extract shop domain from result (add .myshopify.com suffix back)
-        $shopDomain = $result->shop.'.myshopify.com';
+        // Resolve the shop including soft-deleted rows: mandatory GDPR webhooks
+        // (shop/redact, customers/redact) and app/uninstalled arrive up to 48h
+        // after uninstall, when the shop is soft-deleted. Unknown shops are
+        // handled downstream by the controller/dispatcher.
+        $shop = Shop::withTrashed()
+            ->byDomain($result->shop.'.myshopify.com')
+            ->first();
 
-        // Special case: app/uninstalled webhook may be processed without shop auth
-        // because the shop is in the process of being uninstalled
-        if ($webhookTopic === 'app/uninstalled') {
-            // Don't require shop authentication for uninstall webhook
-            return $next($request);
-        }
-
-        // Load shop from database
-        try {
-            $shop = $this->loadShop($shopDomain, $requestType);
-
-            // Set authenticated shop
+        if ($shop) {
             $this->setAuthenticatedShop($request, $shop);
-
-            return $next($request);
-
-        } catch (ShopifyAuthenticationException $e) {
-            $this->logVerificationFailure('webhook', $e->getReason(), [
-                'shop' => $shopDomain,
-                'topic' => $webhookTopic,
-            ]);
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Normalize headers for official package format.
-     * Official package expects lowercase header keys.
-     */
-    private function normalizeHeaders(array $headers): array
-    {
-        $normalized = [];
-        foreach ($headers as $key => $value) {
-            $normalized[strtolower($key)] = is_array($value) ? $value[0] : $value;
         }
 
-        return $normalized;
+        return $next($request);
     }
 }

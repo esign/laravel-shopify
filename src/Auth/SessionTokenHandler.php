@@ -2,7 +2,7 @@
 
 namespace Esign\LaravelShopify\Auth;
 
-use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Shopify\App\ShopifyApp;
 
@@ -16,15 +16,9 @@ use Shopify\App\ShopifyApp;
  */
 class SessionTokenHandler
 {
-    protected ShopifyApp $shopifyApp;
-
-    public function __construct()
-    {
-        $this->shopifyApp = new ShopifyApp(
-            clientId: config('shopify.api_key'),
-            clientSecret: config('shopify.api_secret')
-        );
-    }
+    public function __construct(
+        protected ShopifyApp $shopifyApp,
+    ) {}
 
     /**
      * Validate and decode a session token from a request.
@@ -41,11 +35,11 @@ class SessionTokenHandler
             // Pass the token refresh route path for redirects when token is missing or stale
             $result = $this->shopifyApp->verifyAppHomeReq(
                 $request,
-                '/shopify/auth/token-refresh'
+                $this->tokenRefreshPath()
             );
 
             if (! $result->ok) {
-                throw new \Exception('App home request verification failed: '.($result->log->message ?? 'Unknown error'));
+                throw new \Exception('App home request verification failed: '.($result->log->detail ?? 'Unknown error'));
             }
 
             return $result;
@@ -76,7 +70,7 @@ class SessionTokenHandler
             );
 
             if (! $result->ok) {
-                throw new \RuntimeException('Token exchange failed: '.($result->log->message ?? 'Unknown error'));
+                throw new \RuntimeException('Token exchange failed: '.($result->log->detail ?? 'Unknown error'));
             }
 
             ShopifyLogger::log(LogCategory::TokenLifecycle)->info('Token exchange successful', [
@@ -95,5 +89,17 @@ class SessionTokenHandler
 
             throw new \RuntimeException("Failed to exchange session token for access token: {$e->getMessage()}");
         }
+    }
+
+    /**
+     * Path of the token refresh bounce page.
+     *
+     * Resolved from the named route so it follows the configured route
+     * prefix. Apps that disable the package routes must register their own
+     * route named "shopify.auth.token-refresh".
+     */
+    protected function tokenRefreshPath(): string
+    {
+        return route('shopify.auth.token-refresh', absolute: false);
     }
 }

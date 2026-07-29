@@ -41,8 +41,8 @@
         <h1>Installation Error</h1>
         <p>{{ $error ?? 'There was an error installing the app.' }}</p>
         @if($shop ?? false)
-            <a href="{{ route('shopify.auth.install', ['shop' => $shop]) }}">
-                Retry Installation
+            <a href="https://{{ $shop }}/admin/apps">
+                Back to Shopify Admin
             </a>
         @endif
     </div>

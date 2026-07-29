@@ -30,8 +30,7 @@ class ShopSoftDeleteTest extends TestCase
 
         $this->assertTrue($shop->trashed());
 
-        $newToken = 'shpat_reinstall_token_'.bin2hex(random_bytes(16));
-        $shop->markAsReinstalled($newToken);
+        $shop->markAsReinstalled();
 
         $shop = $shop->fresh();
         $this->assertFalse($shop->trashed());
@@ -41,8 +40,10 @@ class ShopSoftDeleteTest extends TestCase
     }
 
     /** @test */
-    public function it_clears_stale_tokens_when_reinstalled_without_a_new_token()
+    public function it_clears_stale_tokens_on_reinstall()
     {
+        // Even if the uninstall webhook was missed and tokens survived, a
+        // reinstall clears them so a fresh token is obtained via token exchange.
         $shop = $this->createShop([
             'access_token' => 'shpat_old_token',
             'refresh_token' => 'old_refresh_token',
@@ -52,7 +53,7 @@ class ShopSoftDeleteTest extends TestCase
         ]);
         $shop->delete();
 
-        $shop->markAsReinstalled(null);
+        $shop->markAsReinstalled();
 
         $shop = $shop->fresh();
         $this->assertFalse($shop->trashed());
@@ -61,19 +62,6 @@ class ShopSoftDeleteTest extends TestCase
         $this->assertNull($shop->refresh_token);
         $this->assertNull($shop->refresh_token_expires_at);
         $this->assertNull($shop->access_token_last_refreshed_at);
-    }
-
-    /** @test */
-    public function it_keeps_the_new_token_when_reinstalled_with_one()
-    {
-        $shop = $this->createShop();
-        $shop->markAsUninstalled();
-
-        $shop->markAsReinstalled('shpat_new_token');
-
-        $shop = $shop->fresh();
-        $this->assertFalse($shop->trashed());
-        $this->assertEquals('shpat_new_token', $shop->access_token);
     }
 
     /** @test */

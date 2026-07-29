@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Esign\LaravelShopify\Support\LogCategory;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 
 class {{ class }} implements ShouldQueue

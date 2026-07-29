@@ -3,12 +3,13 @@
 namespace Esign\LaravelShopify\Http\Middleware\Concerns;
 
 use Esign\LaravelShopify\Auth\SessionTokenHandler;
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Events\AppInstalledEvent;
 use Esign\LaravelShopify\Events\AppReinstalledEvent;
 use Esign\LaravelShopify\Exceptions\ShopifyAuthenticationException;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
+use Esign\LaravelShopify\Support\ShopifyRequest;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,50 +31,7 @@ trait VerifiesSessionTokens
      */
     protected function buildShopifyRequest(Request $request): array
     {
-        // Laravel returns headers as arrays, but Shopify library expects strings
-        // Convert ['authorization' => ['Bearer token']] to ['authorization' => 'Bearer token']
-        $headers = [];
-        foreach ($request->headers->all() as $key => $values) {
-            $headers[$key] = is_array($values) ? implode(', ', $values) : $values;
-        }
-
-        return [
-            'headers' => $headers,
-            'rawBody' => $request->getContent(),
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'searchParams' => $request->query->all(),
-        ];
-    }
-
-    /**
-     * Extract shop domain from ID token.
-     *
-     * @throws ShopifyAuthenticationException
-     */
-    protected function extractShopDomainFromToken(
-        \Shopify\App\Types\IdToken $idToken,
-        string $requestType
-    ): string {
-        // dest format: https://shop-name.myshopify.com/admin
-        if (empty($idToken->claims['dest'])) {
-            throw new ShopifyAuthenticationException(
-                $requestType,
-                'IdToken missing dest claim'
-            );
-        }
-
-        $parsedUrl = parse_url($idToken->claims['dest']);
-        $shopDomain = $parsedUrl['path'] ?? $parsedUrl['host'] ?? null;
-
-        if (! $shopDomain) {
-            throw new ShopifyAuthenticationException(
-                $requestType,
-                'Could not extract shop domain from IdToken'
-            );
-        }
-
-        return $shopDomain;
+        return ShopifyRequest::fromLaravelRequest($request);
     }
 
     /**
@@ -83,18 +41,12 @@ trait VerifiesSessionTokens
      */
     protected function loadOrCreateShop(string $shopDomain, string $requestType): Shop
     {
-        $shop = Shop::withTrashed()->where('domain', $shopDomain)->first();
+        // Include soft-deleted shops so a reinstall restores the existing row
+        // instead of hitting the unique domain index with Shop::create().
+        $shop = Shop::withTrashed()->byDomain($shopDomain)->first();
 
         if ($shop && $shop->trashed()) {
-            // Shop was previously uninstalled, restore it
-            $shop->markAsReinstalled(null); // Access token will be set after token exchange
-
-            ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
-
-            $restoredShop = $shop->fresh();
-            AppReinstalledEvent::dispatch($restoredShop);
-
-            return $restoredShop;
+            return $this->restoreShop($shop, $shopDomain);
         }
 
         if (! $shop) {
@@ -110,18 +62,32 @@ trait VerifiesSessionTokens
             } catch (UniqueConstraintViolationException) {
                 // App Bridge fires parallel requests on first load; another
                 // request created the shop between our lookup and insert.
-                $shop = Shop::withTrashed()->where('domain', $shopDomain)->firstOrFail();
+                $shop = Shop::withTrashed()->byDomain($shopDomain)->firstOrFail();
 
                 if ($shop->trashed()) {
-                    $shop->markAsReinstalled(null);
-
-                    ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
-
-                    $shop = $shop->fresh();
-                    AppReinstalledEvent::dispatch($shop);
+                    $shop = $this->restoreShop($shop, $shopDomain);
                 }
             }
         }
+
+        return $shop;
+    }
+
+    /**
+     * Restore a soft-deleted shop and announce the reinstall.
+     *
+     * Single restore path shared by the normal lookup and the parallel-request
+     * recovery branch, so both always dispatch AppReinstalledEvent.
+     */
+    protected function restoreShop(Shop $shop, string $shopDomain): Shop
+    {
+        // markAsReinstalled() clears any pre-uninstall tokens; a fresh one is
+        // obtained via token exchange after this.
+        $shop->markAsReinstalled();
+
+        ShopifyLogger::log(LogCategory::ShopLifecycle)->info('Shop reinstalled', ['shop' => $shopDomain]);
+
+        AppReinstalledEvent::dispatch($shop);
 
         return $shop;
     }
@@ -133,7 +99,7 @@ trait VerifiesSessionTokens
      */
     protected function loadShop(string $shopDomain, string $requestType): Shop
     {
-        $shop = Shop::where('domain', $shopDomain)->withTrashed()->first();
+        $shop = Shop::withTrashed()->byDomain($shopDomain)->first();
 
         if (! $shop) {
             throw new ShopifyAuthenticationException(
@@ -194,15 +160,9 @@ trait VerifiesSessionTokens
                 'refresh_token_expires' => $accessToken->refreshTokenExpires ?? 'never',
             ]);
 
-            $shop->update([
-                'access_token' => $accessToken->token,
-                'access_token_expires_at' => $accessToken->expires,
-                'refresh_token' => $accessToken->refreshToken ?? null,
-                'refresh_token_expires_at' => $accessToken->refreshTokenExpires ?? null,
-                'access_token_last_refreshed_at' => now(),
-            ]);
+            $shop->storeAccessToken($accessToken);
 
-            return $shop->fresh();
+            return $shop;
 
         } catch (\Exception $e) {
             throw new ShopifyAuthenticationException(
@@ -224,13 +184,5 @@ trait VerifiesSessionTokens
 
         // Store shop in request attributes for easy access
         $request->attributes->set('shopify_shop', $shop);
-    }
-
-    /**
-     * Log verification failure.
-     */
-    protected function logVerificationFailure(string $type, string $reason, array $context = []): void
-    {
-        ShopifyLogger::log()->warning("Shopify {$type} verification failed: {$reason}", $context);
     }
 }

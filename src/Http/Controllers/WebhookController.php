@@ -2,8 +2,8 @@
 
 namespace Esign\LaravelShopify\Http\Controllers;
 
+use Esign\LaravelShopify\Enums\LogCategory;
 use Esign\LaravelShopify\Models\Shop;
-use Esign\LaravelShopify\Support\LogCategory;
 use Esign\LaravelShopify\Support\ShopifyLogger;
 use Esign\LaravelShopify\Webhooks\WebhookDispatcher;
 use Illuminate\Http\Request;
@@ -28,7 +28,7 @@ class WebhookController
 
         // Find shop (include soft-deleted for uninstall webhook)
         $shopModel = Shop::withTrashed()
-            ->where('domain', $shop)
+            ->byDomain($shop)
             ->first();
 
         if (! $shopModel) {

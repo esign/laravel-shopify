@@ -2,9 +2,11 @@
 
 namespace Esign\LaravelShopify\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Shopify\App\Types\TokenExchangeAccessToken;
 
 class Shop extends Authenticatable
 {
@@ -45,6 +47,29 @@ class Shop extends Authenticatable
     }
 
     /**
+     * Scope a query to a shop's myshopify domain.
+     */
+    public function scopeByDomain(Builder $query, string $domain): Builder
+    {
+        return $query->where('domain', $domain);
+    }
+
+    /**
+     * Whether the given value is a well-formed *.myshopify.com domain.
+     *
+     * Guards untrusted `shop` request parameters before they reach outbound
+     * links or response headers (e.g. the token-refresh CSP frame-ancestors).
+     */
+    public static function isValidDomain(?string $domain): bool
+    {
+        if (! $domain) {
+            return false;
+        }
+
+        return preg_match('/^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$/', $domain) === 1;
+    }
+
+    /**
      * Mark the shop as uninstalled and soft delete it.
      */
     public function markAsUninstalled(): void
@@ -58,29 +83,25 @@ class Shop extends Authenticatable
 
     /**
      * Restore a shop that has been uninstalled and reinstalled.
+     *
+     * The access token is set separately via token exchange after reinstall.
      */
-    public function markAsReinstalled(?string $accessToken = null): void
+    public function markAsReinstalled(): void
     {
         $this->restore(); // Restore from soft delete
 
-        $updateData = [
+        // Clear any pre-uninstall tokens: they were revoked by Shopify at
+        // uninstall, so token exchange must run instead of reusing a dead token.
+        // A fresh token is stored afterwards via storeAccessToken().
+        $this->update([
             'installed_at' => now(),
             'uninstalled_at' => null, // Clear uninstall timestamp
-        ];
-
-        if ($accessToken !== null) {
-            $updateData['access_token'] = $accessToken;
-        } else {
-            // Any token from before the uninstall was revoked by Shopify.
-            // Clear it so token exchange runs instead of reusing a dead token.
-            $updateData['access_token'] = null;
-            $updateData['access_token_expires_at'] = null;
-            $updateData['refresh_token'] = null;
-            $updateData['refresh_token_expires_at'] = null;
-            $updateData['access_token_last_refreshed_at'] = null;
-        }
-
-        $this->update($updateData);
+            'access_token' => null,
+            'access_token_expires_at' => null,
+            'refresh_token' => null,
+            'refresh_token_expires_at' => null,
+            'access_token_last_refreshed_at' => null,
+        ]);
     }
 
     /**
@@ -111,6 +132,33 @@ class Shop extends Authenticatable
     }
 
     /**
+     * The shop name without the .myshopify.com suffix
+     * (e.g. "dev-store.myshopify.com" -> "dev-store").
+     *
+     * The Shopify library expects the bare shop name, not the full domain.
+     */
+    public function shopName(): string
+    {
+        return str_replace('.myshopify.com', '', $this->domain);
+    }
+
+    /**
+     * Persist an access token obtained from token exchange or refresh.
+     *
+     * Shopify rotates refresh tokens, so the new refresh token is stored too.
+     */
+    public function storeAccessToken(TokenExchangeAccessToken $accessToken): void
+    {
+        $this->update([
+            'access_token' => $accessToken->token,
+            'access_token_expires_at' => $accessToken->expires,
+            'refresh_token' => $accessToken->refreshToken ?? null,
+            'refresh_token_expires_at' => $accessToken->refreshTokenExpires ?? null,
+            'access_token_last_refreshed_at' => now(),
+        ]);
+    }
+
+    /**
      * Check if refresh token is expired.
      */
     public function isRefreshTokenExpired(): bool
@@ -129,12 +177,9 @@ class Shop extends Authenticatable
      */
     public function getTokenExchangeAccessTokenArray(): array
     {
-        // Extract shop name from domain (e.g., "dev-store.myshopify.com" -> "dev-store")
-        $shopName = str_replace('.myshopify.com', '', $this->domain);
-
         return [
             'accessMode' => 'offline',
-            'shop' => $shopName,
+            'shop' => $this->shopName(),
             'token' => $this->access_token ?? '',
             'expires' => $this->access_token_expires_at?->toIso8601String(),
             'scope' => '', // Scope is returned by Shopify, not required as input

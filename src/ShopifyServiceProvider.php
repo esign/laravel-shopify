@@ -13,9 +13,11 @@ use Esign\LaravelShopify\Http\Middleware\VerifyEmbeddedApp;
 use Esign\LaravelShopify\Http\Middleware\VerifyFlowAction;
 use Esign\LaravelShopify\Http\Middleware\VerifyPosUIExtension;
 use Esign\LaravelShopify\Http\Middleware\VerifyWebhook;
+use Esign\LaravelShopify\Support\ShopifyLogger;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use Shopify\App\ShopifyApp;
 
 class ShopifyServiceProvider extends ServiceProvider
 {
@@ -30,6 +32,15 @@ class ShopifyServiceProvider extends ServiceProvider
         // Register the main Shopify manager
         $this->app->singleton('shopify', function ($app) {
             return new ShopifyManager;
+        });
+
+        // Single source for the official Shopify library client
+        $this->app->singleton(ShopifyApp::class, function ($app) {
+            return new ShopifyApp(
+                clientId: config('shopify.api_key'),
+                clientSecret: config('shopify.api_secret'),
+                oldClientSecret: config('shopify.old_api_secret'),
+            );
         });
     }
 
@@ -59,9 +70,11 @@ class ShopifyServiceProvider extends ServiceProvider
         // Load views
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'shopify');
 
-        // Load routes
-        $this->loadRoutesFrom(__DIR__.'/../routes/shopify.php');
-        $this->loadRoutesFrom(__DIR__.'/../routes/webhooks.php');
+        // Load routes (unless the application takes full control)
+        if (config('shopify.routes.enabled', true)) {
+            $this->loadRoutesFrom(__DIR__.'/../routes/shopify.php');
+            $this->loadRoutesFrom(__DIR__.'/../routes/webhooks.php');
+        }
 
         // Register middleware
         $this->registerMiddleware();
@@ -133,7 +146,11 @@ class ShopifyServiceProvider extends ServiceProvider
             }
         } catch (\Exception $e) {
             // If exception handler is not available yet (during package bootstrap),
-            // that's okay - the application can manually register the handler
+            // the application can manually register the handler. Log so a
+            // misconfiguration doesn't fail silently in production.
+            ShopifyLogger::log()->warning('Could not register Shopify exception rendering; register ShopifyAuthenticationExceptionHandler manually if needed.', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

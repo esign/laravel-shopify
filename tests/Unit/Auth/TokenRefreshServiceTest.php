@@ -18,7 +18,7 @@ class TokenRefreshServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new TokenRefreshService;
+        $this->service = app(TokenRefreshService::class);
     }
 
     protected function tearDown(): void
@@ -28,7 +28,7 @@ class TokenRefreshServiceTest extends TestCase
     }
 
     /** @test */
-    public function it_returns_false_when_shop_has_no_refresh_token()
+    public function it_returns_false_but_keeps_tokens_when_shop_has_no_refresh_token()
     {
         $logger = ShopifyLogger::fake();
 
@@ -42,11 +42,16 @@ class TokenRefreshServiceTest extends TestCase
 
         $this->assertFalse($result);
 
+        // The library reports a missing refresh token as configuration_error,
+        // which is app-side misconfiguration - tokens are kept, not cleared.
+        $this->assertSame('shpat_test', $shop->fresh()->access_token);
+
         $logger->shouldHaveReceived('error')
             ->once()
-            ->with('Cannot refresh token: no refresh token', [
-                'shop' => 'test-shop.myshopify.com',
-            ]);
+            ->with('Token refresh failed', \Mockery::on(function ($arg) {
+                return $arg['error_code'] === 'configuration_error';
+            }));
+        $logger->shouldNotHaveReceived('warning');
     }
 
     /** @test */
@@ -67,12 +72,14 @@ class TokenRefreshServiceTest extends TestCase
         $this->assertNull($shop->fresh()->access_token);
         $this->assertNull($shop->fresh()->refresh_token);
 
+        // The library performs the expiry check and reports refresh_token_expired
         $logger->shouldHaveReceived('warning')
             ->once()
-            ->with('Refresh token expired, clearing tokens', \Mockery::any());
+            ->with('Refresh token unusable, clearing all tokens', \Mockery::on(function ($arg) {
+                return $arg['error_code'] === 'refresh_token_expired';
+            }));
 
         $logger->shouldHaveReceived('info')
-            ->once()
             ->with('Clearing tokens', \Mockery::any());
     }
 
@@ -105,7 +112,7 @@ class TokenRefreshServiceTest extends TestCase
             ok: true,
             shop: 'test-shop.myshopify.com',
             accessToken: $newAccessToken,
-            log: new ShopifyLog(code: 'refresh_successful', detail: 'Token refreshed'),
+            log: new ShopifyLog(code: 'success', detail: 'Token refreshed'),
             httpLogs: [],
             response: new ResponseInfo(status: 200, body: '', headers: [])
         );
@@ -207,9 +214,55 @@ class TokenRefreshServiceTest extends TestCase
         $this->assertNull($shop->fresh()->refresh_token);
 
         $logger->shouldHaveReceived('info')->twice();
-        $logger->shouldHaveReceived('error')->once();
         $logger->shouldHaveReceived('warning')
-            ->with('Refresh token invalid, clearing all tokens', \Mockery::any());
+            ->with('Refresh token unusable, clearing all tokens', \Mockery::on(function ($arg) {
+                return $arg['error_code'] === 'invalid_grant';
+            }));
+    }
+
+    /** @test */
+    public function it_keeps_tokens_on_invalid_client_error()
+    {
+        $logger = ShopifyLogger::fake();
+
+        $shop = $this->createShop([
+            'domain' => 'test-shop.myshopify.com',
+            'access_token' => 'token',
+            'refresh_token' => 'refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        // invalid_client means wrong/rotated app credentials (app-side
+        // misconfiguration), not shop-token invalidity - keep the tokens so
+        // refresh resumes once the config is corrected.
+        $failedResult = new TokenExchangeResult(
+            ok: false,
+            shop: 'test-shop.myshopify.com',
+            accessToken: null,
+            log: new ShopifyLog(code: 'invalid_client', detail: 'Client credentials are invalid'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 400, body: '', headers: [])
+        );
+
+        $mockShopifyApp = \Mockery::mock(ShopifyApp::class);
+        $mockShopifyApp->shouldReceive('refreshTokenExchangedAccessToken')
+            ->once()
+            ->andReturn($failedResult);
+
+        $reflection = new \ReflectionClass($this->service);
+        $property = $reflection->getProperty('shopifyApp');
+        $property->setValue($this->service, $mockShopifyApp);
+
+        $result = $this->service->refreshAccessToken($shop);
+
+        $this->assertFalse($result);
+        $this->assertSame('token', $shop->fresh()->access_token);
+        $this->assertSame('refresh_token', $shop->fresh()->refresh_token);
+
+        $logger->shouldHaveReceived('error')
+            ->with('Token refresh failed', \Mockery::on(function ($arg) {
+                return $arg['error_code'] === 'invalid_client';
+            }));
     }
 
     /** @test */
