@@ -1,8 +1,12 @@
 # Upgrade Guide
 
-This release contains several **breaking changes**. The package is still `0.x`,
-so breaking changes ship in minor releases. Work through the sections below that
-apply to your app.
+## Upgrading from 2.x to 3.0
+
+Version 3.0 contains several **breaking changes**. Work through the sections
+below that apply to your app before upgrading. If you only use the embedded-app
+authentication and webhooks with default configuration, most changes won't
+affect you — but re-publish the config (section 6) and check the route rename
+(section 2) and the DTO package split (section 1).
 
 ## 1. DTOs, Inputs and Enums moved to a separate package
 
