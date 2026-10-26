@@ -73,7 +73,7 @@ class ShopifyAuthenticationExceptionHandler
         ]);
 
         // When the library provided a retry response (via the verify result's
-        // newIdTokenResponse), serve it verbatim: App Bridge intercepts it and
+        // invalidTokenResponse), serve it verbatim: App Bridge intercepts it and
         // retries the request with a fresh session token automatically.
         if ($exception->response !== null) {
             return ShopifyResponse::toLaravelResponse($exception->response);

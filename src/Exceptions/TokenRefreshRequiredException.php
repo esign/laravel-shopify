@@ -17,7 +17,7 @@ class TokenRefreshRequiredException extends \Exception
 {
     /**
      * @param  ResponseInfo|null  $response  Library-provided retry response
-     *                                       (from the verify result's newIdTokenResponse); when present it is
+     *                                       (from the verify result's invalidTokenResponse); when present it is
      *                                       served verbatim so App Bridge retries with a fresh session token.
      */
     public function __construct(

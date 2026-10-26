@@ -35,7 +35,8 @@ class TokenRefreshServiceTest extends TestCase
         $shop = $this->createShop([
             'domain' => 'test-shop.myshopify.com',
             'access_token' => 'shpat_test',
-            'refresh_token' => null, // No refresh token
+            'access_token_expires_at' => now()->subMinute(), // Expiring token...
+            'refresh_token' => null, // ...but no refresh token
         ]);
 
         $result = $this->service->refreshAccessToken($shop);
@@ -51,6 +52,29 @@ class TokenRefreshServiceTest extends TestCase
             ->with('Token refresh failed', \Mockery::on(function ($arg) {
                 return $arg['error_code'] === 'configuration_error';
             }));
+        $logger->shouldNotHaveReceived('warning');
+    }
+
+    /** @test */
+    public function it_returns_true_for_a_non_expiring_token_without_refresh_token()
+    {
+        $logger = ShopifyLogger::fake();
+
+        $shop = $this->createShop([
+            'domain' => 'test-shop.myshopify.com',
+            'access_token' => 'shpat_test',
+            'access_token_expires_at' => null, // Non-expiring
+            'refresh_token' => null,
+        ]);
+
+        $result = $this->service->refreshAccessToken($shop);
+
+        // The library reports non_expiring_no_refresh_needed - nothing to do,
+        // tokens are kept and no error is logged.
+        $this->assertTrue($result);
+        $this->assertSame('shpat_test', $shop->fresh()->access_token);
+
+        $logger->shouldNotHaveReceived('error');
         $logger->shouldNotHaveReceived('warning');
     }
 

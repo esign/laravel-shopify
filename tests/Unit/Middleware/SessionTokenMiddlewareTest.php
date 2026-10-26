@@ -47,7 +47,7 @@ class SessionTokenMiddlewareTest extends TestCase
         bool $ok = true,
         ?IdToken $idToken = null,
         ?string $userId = null,
-        ?array $newIdTokenResponse = null,
+        ?array $invalidTokenResponse = null,
         array $responseHeaders = [],
     ): ResultWithExchangeableIdToken {
         return new ResultWithExchangeableIdToken(
@@ -55,7 +55,7 @@ class SessionTokenMiddlewareTest extends TestCase
             shop: 'test-shop',
             idToken: $idToken,
             userId: $userId,
-            newIdTokenResponse: $newIdTokenResponse,
+            invalidTokenResponse: $invalidTokenResponse,
             log: new LogWithReq('code', 'detail', []),
             response: new ResponseInfo(200, '', $responseHeaders),
         );
@@ -235,17 +235,17 @@ class SessionTokenMiddlewareTest extends TestCase
     {
         $this->createShop();
 
-        $newIdTokenResponse = ['status' => 401, 'body' => '', 'headers' => ['X-Shopify-Retry-Invalid-Session-Request' => '1']];
+        $invalidTokenResponse = ['status' => 401, 'body' => '', 'headers' => ['X-Shopify-Retry-Invalid-Session-Request' => '1']];
 
         $this->mockShopifyApp()
             ->shouldReceive('verifyAdminUIExtReq')
             ->once()
-            ->andReturn($this->makeExchangeableResult(idToken: $this->makeIdToken(), newIdTokenResponse: $newIdTokenResponse));
+            ->andReturn($this->makeExchangeableResult(idToken: $this->makeIdToken(), invalidTokenResponse: $invalidTokenResponse));
 
         $request = Request::create('/extension', 'GET');
         app(VerifyAdminUIExtension::class)->handle($request, fn () => response('ok'));
 
-        $this->assertSame($newIdTokenResponse, $request->attributes->get('shopify_new_id_token_response'));
+        $this->assertSame($invalidTokenResponse, $request->attributes->get('shopify_new_id_token_response'));
     }
 
     public function test_generic_exception_is_wrapped_in_authentication_exception(): void
