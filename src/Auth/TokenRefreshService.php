@@ -24,8 +24,10 @@ class TokenRefreshService
      *
      * All validation happens inside the library: refresh token presence
      * (configuration_error), refresh token expiration (refresh_token_expired),
-     * and whether the access token is still valid (token_still_valid, with a
-     * 60-second buffer). This service only reacts to the result codes.
+     * whether the access token is still valid (token_still_valid, with a
+     * 60-second buffer) and whether it never expires at all
+     * (non_expiring_no_refresh_needed). This service only reacts to the
+     * result codes.
      *
      * @return bool Success/failure
      */
@@ -43,7 +45,8 @@ class TokenRefreshService
 
             return match ($result->log->code) {
                 'success' => $this->storeRefreshedToken($shop, $result),
-                'token_still_valid' => $this->logStillValid($shop),
+                'token_still_valid',
+                'non_expiring_no_refresh_needed' => $this->logStillValid($shop),
 
                 // The refresh token itself is expired or was rejected by
                 // Shopify - clear tokens so the shop re-authenticates.

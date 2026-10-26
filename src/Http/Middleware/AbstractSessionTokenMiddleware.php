@@ -131,8 +131,8 @@ abstract class AbstractSessionTokenMiddleware
             // Expose the retry response so the GraphQL client can hand it to
             // adminGraphQLRequest (invalidTokenResponse) — App Bridge then
             // auto-retries with a fresh session token on 401s.
-            if (($result->newIdTokenResponse ?? null) !== null) {
-                $request->attributes->set('shopify_new_id_token_response', $result->newIdTokenResponse);
+            if (($result->invalidTokenResponse ?? null) !== null) {
+                $request->attributes->set('shopify_new_id_token_response', $result->invalidTokenResponse);
             }
 
             $this->storeAdditionalAttributes($request, $result);
