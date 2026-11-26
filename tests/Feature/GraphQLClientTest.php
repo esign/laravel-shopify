@@ -906,4 +906,101 @@ class GraphQLClientTest extends TestCase
         $this->assertEquals(['node' => ['id' => '1']], $results[0]);
         $this->assertEquals(['node' => ['id' => '2']], $results[1]);
     }
+
+    /** @test */
+    public function it_refreshes_an_expired_token_before_sending_the_request()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'access_token_expires_at' => now()->subMinute(),
+            'refresh_token' => 'valid_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->once())
+            ->method('refreshAccessToken')
+            ->with($shop)
+            ->willReturnCallback(function () use ($shop) {
+                $shop->update(['access_token' => 'fresh_token', 'access_token_expires_at' => now()->addHour()]);
+
+                return true;
+            });
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->once())
+            ->method('adminGraphQLRequest')
+            ->with($this->anything(), $this->anything(), 'fresh_token')
+            ->willReturn($this->shopNameResult($shop));
+
+        $result = $this->clientWith($shop, $mockShopifyApp)->query($this->shopNameQuery());
+
+        $this->assertEquals(['name' => 'Test Shop'], $result);
+    }
+
+    /** @test */
+    public function it_does_not_refresh_a_token_that_is_still_valid()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'valid_token',
+            'access_token_expires_at' => now()->addHour(),
+            'refresh_token' => 'valid_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $mockTokenRefreshService = $this->createMock(\Esign\LaravelShopify\Auth\TokenRefreshService::class);
+        $mockTokenRefreshService->expects($this->never())->method('refreshAccessToken');
+
+        $this->app->instance(\Esign\LaravelShopify\Auth\TokenRefreshService::class, $mockTokenRefreshService);
+
+        $mockShopifyApp = $this->createMock(\Shopify\App\ShopifyApp::class);
+        $mockShopifyApp->expects($this->once())
+            ->method('adminGraphQLRequest')
+            ->willReturn($this->shopNameResult($shop));
+
+        $result = $this->clientWith($shop, $mockShopifyApp)->query($this->shopNameQuery());
+
+        $this->assertEquals(['name' => 'Test Shop'], $result);
+    }
+
+    private function shopNameQuery(): Query
+    {
+        return new class implements Query
+        {
+            public function query(): string
+            {
+                return 'query { shop { name } }';
+            }
+
+            public function variables(): array
+            {
+                return [];
+            }
+
+            public function mapFromResponse(GQLResult $response): mixed
+            {
+                return $response->data['shop'];
+            }
+        };
+    }
+
+    private function shopNameResult(\Esign\LaravelShopify\Models\Shop $shop): GQLResult
+    {
+        return new GQLResult(
+            ok: true,
+            shop: $shop->domain,
+            data: ['shop' => ['name' => 'Test Shop']],
+            extensions: null,
+            log: new Log('ok', 'Success'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: []),
+        );
+    }
+
+    private function clientWith(\Esign\LaravelShopify\Models\Shop $shop, \Shopify\App\ShopifyApp $shopifyApp): Client
+    {
+        return new Client($shop, $shopifyApp);
+    }
 }

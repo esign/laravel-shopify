@@ -44,6 +44,60 @@ class ShopModelExtendedTest extends TestCase
     }
 
     /** @test */
+    public function it_reports_an_access_token_past_its_expiry_as_expired()
+    {
+        $shop = $this->createShop([
+            'access_token_expires_at' => now()->subMinute(),
+        ]);
+
+        $this->assertTrue($shop->isAccessTokenExpired());
+    }
+
+    /** @test */
+    public function it_reports_an_access_token_expiring_within_the_buffer_as_expired()
+    {
+        $shop = $this->createShop([
+            'access_token_expires_at' => now()->addSeconds(30),
+        ]);
+
+        $this->assertTrue($shop->isAccessTokenExpired());
+        $this->assertFalse($shop->isAccessTokenExpired(bufferSeconds: 0));
+    }
+
+    /** @test */
+    public function it_reports_an_access_token_with_time_left_as_valid()
+    {
+        $shop = $this->createShop([
+            'access_token_expires_at' => now()->addHour(),
+        ]);
+
+        $this->assertFalse($shop->isAccessTokenExpired());
+    }
+
+    /** @test */
+    public function it_treats_null_access_token_expires_at_as_non_expiring()
+    {
+        $shop = $this->createShop([
+            'access_token_expires_at' => null,
+        ]);
+
+        $this->assertFalse($shop->isAccessTokenExpired());
+    }
+
+    /** @test */
+    public function it_does_not_change_the_expiry_date_while_checking_it()
+    {
+        $expiresAt = now()->addHour()->startOfSecond();
+        $shop = $this->createShop([
+            'access_token_expires_at' => $expiresAt,
+        ]);
+
+        $shop->isAccessTokenExpired(bufferSeconds: 600);
+
+        $this->assertTrue($shop->access_token_expires_at->equalTo($expiresAt));
+    }
+
+    /** @test */
     public function it_returns_token_exchange_access_token_array()
     {
         $shop = $this->createShop([

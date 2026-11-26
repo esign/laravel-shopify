@@ -159,6 +159,22 @@ class Shop extends Authenticatable
     }
 
     /**
+     * Whether the access token has expired, or will within the buffer.
+     *
+     * The default buffer matches the one the Shopify library applies before it
+     * agrees to refresh, so a token reported as expired here is refreshed there.
+     * A token without an expiry date never expires.
+     */
+    public function isAccessTokenExpired(int $bufferSeconds = 60): bool
+    {
+        if (! $this->access_token_expires_at) {
+            return false;
+        }
+
+        return now()->addSeconds($bufferSeconds)->greaterThanOrEqualTo($this->access_token_expires_at);
+    }
+
+    /**
      * Check if refresh token is expired.
      */
     public function isRefreshTokenExpired(): bool

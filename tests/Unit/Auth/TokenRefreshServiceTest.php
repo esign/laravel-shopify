@@ -347,4 +347,103 @@ class TokenRefreshServiceTest extends TestCase
             ->once()
             ->with('Clearing tokens', ['shop' => 'test-shop.myshopify.com']);
     }
+
+    /** @test */
+    public function it_returns_a_valid_access_token_without_refreshing_it()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'valid_token',
+            'access_token_expires_at' => now()->addHour(),
+            'refresh_token' => 'refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $this->mockShopifyApp()->shouldNotReceive('refreshTokenExchangedAccessToken');
+
+        $this->assertSame('valid_token', $this->service->ensureValidAccessToken($shop));
+    }
+
+    /** @test */
+    public function it_returns_a_non_expiring_access_token_without_refreshing_it()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'shpat_non_expiring',
+            'access_token_expires_at' => null,
+        ]);
+
+        $this->mockShopifyApp()->shouldNotReceive('refreshTokenExchangedAccessToken');
+
+        $this->assertSame('shpat_non_expiring', $this->service->ensureValidAccessToken($shop));
+    }
+
+    /** @test */
+    public function it_refreshes_an_expired_access_token_before_returning_it()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'access_token_expires_at' => now()->subMinute(),
+            'refresh_token' => 'old_refresh_token',
+            'refresh_token_expires_at' => now()->addDays(30),
+        ]);
+
+        $this->mockShopifyApp()->shouldReceive('refreshTokenExchangedAccessToken')
+            ->once()
+            ->andReturn($this->successfulRefresh('fresh_token'));
+
+        $this->assertSame('fresh_token', $this->service->ensureValidAccessToken($shop));
+        $this->assertSame('fresh_token', $shop->fresh()->access_token);
+    }
+
+    /** @test */
+    public function it_returns_null_when_an_expired_access_token_cannot_be_refreshed()
+    {
+        $shop = $this->createShop([
+            'access_token' => 'expired_token',
+            'access_token_expires_at' => now()->subMinute(),
+            'refresh_token' => null,
+        ]);
+
+        $this->assertNull($this->service->ensureValidAccessToken($shop));
+    }
+
+    /** @test */
+    public function it_returns_null_when_the_shop_has_no_access_token()
+    {
+        $shop = $this->createShop([
+            'access_token' => null,
+        ]);
+
+        $this->assertNull($this->service->ensureValidAccessToken($shop));
+    }
+
+    private function mockShopifyApp(): \Mockery\MockInterface
+    {
+        $mockShopifyApp = \Mockery::mock(ShopifyApp::class);
+
+        $property = (new \ReflectionClass($this->service))->getProperty('shopifyApp');
+        $property->setValue($this->service, $mockShopifyApp);
+
+        return $mockShopifyApp;
+    }
+
+    private function successfulRefresh(string $token): TokenExchangeResult
+    {
+        return new TokenExchangeResult(
+            ok: true,
+            shop: 'test-shop.myshopify.com',
+            accessToken: new TokenExchangeAccessToken(
+                accessMode: 'offline',
+                shop: 'test-shop',
+                token: $token,
+                expires: now()->addHour()->format('Y-m-d H:i:s'),
+                scope: 'read_products',
+                refreshToken: 'new_refresh_token',
+                refreshTokenExpires: now()->addDays(30)->format('Y-m-d H:i:s'),
+                user: null
+            ),
+            log: new ShopifyLog(code: 'success', detail: 'Token refreshed'),
+            httpLogs: [],
+            response: new ResponseInfo(status: 200, body: '', headers: [])
+        );
+    }
 }

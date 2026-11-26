@@ -371,7 +371,22 @@ $allProducts = Shopify::queryPaginated(new GetAllProductsQuery());
 
 The client handles two failure modes for you:
 
-- **Expired access token** - refreshed automatically, then the request is retried.
+- **Expired access token** - refreshed before the request when its expiry date has
+  passed, and refreshed then retried when Shopify still answers 401.
+
+Calls that bypass the client (the REST Admin API, bulk operation result downloads,
+your own HTTP client) get none of this. Ask for a usable token instead of reading
+`$shop->access_token` directly:
+
+```php
+use Esign\LaravelShopify\Auth\TokenRefreshService;
+
+$accessToken = app(TokenRefreshService::class)->ensureValidAccessToken($shop)
+    ?? throw new RuntimeException("No usable access token for {$shop->domain}.");
+
+Http::withHeaders(['X-Shopify-Access-Token' => $accessToken])
+    ->get("https://{$shop->domain}/admin/api/2026-07/orders/{$orderId}/transactions.json");
+```
 - **Rate limiting** - Shopify throttles GraphQL by query cost. In queue/console
   contexts the client waits for the cost bucket to refill and retries (tunable via
   `shopify.rate_limiting`); in a web request it throws `GraphQLThrottledException`

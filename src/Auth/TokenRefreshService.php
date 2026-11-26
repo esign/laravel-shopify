@@ -72,6 +72,33 @@ class TokenRefreshService
     }
 
     /**
+     * Return an access token that is usable right now, refreshing it first when
+     * it has expired or is about to.
+     *
+     * For calls to Shopify that bypass the GraphQL client (REST, bulk operation
+     * result downloads, any other HTTP client) and so never get its
+     * refresh-and-retry on a 401.
+     *
+     * @return string|null null when the shop has no token or it could not be refreshed
+     */
+    public function ensureValidAccessToken(Shop $shop): ?string
+    {
+        if (! $shop->access_token) {
+            return null;
+        }
+
+        if (! $shop->isAccessTokenExpired()) {
+            return $shop->access_token;
+        }
+
+        if (! $this->refreshAccessToken($shop)) {
+            return null;
+        }
+
+        return $shop->access_token;
+    }
+
+    /**
      * Persist a freshly refreshed token (Shopify rotates the refresh token too).
      */
     protected function storeRefreshedToken(Shop $shop, TokenExchangeResult $result): bool

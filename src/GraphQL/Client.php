@@ -81,7 +81,14 @@ class Client
      */
     protected function executeGraphQL(string $query, array $variables = []): GQLResult
     {
-        $result = $this->retryIfThrottled($this->makeGraphQLRequest($query, $variables), $query, $variables);
+        // A token known to be expired is refreshed up front rather than spending
+        // a request on the 401. A failed refresh is left to the 401 path below,
+        // which decides whether the shop has to re-authenticate.
+        if ($this->shop->isAccessTokenExpired()) {
+            $this->attemptTokenRefresh();
+        }
+
+        $result =$this->retryIfThrottled($this->makeGraphQLRequest($query, $variables), $query, $variables);
 
         // Authentication errors are retriable: refresh the token and retry once.
         if (! $result->ok && $this->isAuthenticationError($result)) {
